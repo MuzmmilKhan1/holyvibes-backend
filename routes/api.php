@@ -29,7 +29,7 @@ Route::prefix('teacher')->group(function () {
     Route::post('/requested-teacher', [TeacherController::class, "handle_requested_teacher"]);
     Route::post('/assign_login_credentials', [TeacherController::class, "assign_login_credentials"]);
     Route::get('/get', [TeacherController::class, "get_teachers"]);
-    Route::post('/block', [TeacherController::class, "assign_login_credentials"]);
+    Route::post('/block', [TeacherController::class, "block_or_unblock_teacher"]);
     Route::post('/delete', [TeacherController::class, "delete_teacher"]);
 
 });

@@ -17,7 +17,9 @@ class User extends Model implements JWTSubject
         'name',
         'email',
         'password',
-        'role'
+        'role',
+        'teacher_id',
+        'student_id',
     ];
 
     // JWT required methods

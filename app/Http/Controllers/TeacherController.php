@@ -90,7 +90,7 @@ class TeacherController extends Controller
             $teacher->email = $validatedData['email'];
             $teacher->save();
             $newUser = User::create([
-                'teacherID' => $validatedData['teacherID'],
+                'teacher_id' => $validatedData['teacherID'],
                 'name' => $validatedData["name"],
                 'email' => $validatedData["email"],
                 'password' => Hash::make($validatedData["password"]),
@@ -128,5 +128,29 @@ class TeacherController extends Controller
         ], 200);
     }
 
+    public function block_or_unblock_teacher(Request $request)
+    {
+        $validatedData = $request->validate([
+            'teacherID' => 'required|exists:teachers,id',
+        ]);
+    
+        $teacher = Teacher::find($validatedData['teacherID']);
+        $currentStatus = "";
+        if ($teacher->status === 'allowed') {
+            $teacher->status = 'blocked';
+            $currentStatus = 'blocked'; 
+        } else {
+            $teacher->status = 'allowed';
+            $currentStatus = 'allowed'; 
+        }
+    
+        $teacher->save();
+    
+        return response()->json([
+            'message' => "Teacher {$currentStatus} successfully.",
+            'status' => $teacher->status,
+        ], 200);
+    }
+    
 
 }

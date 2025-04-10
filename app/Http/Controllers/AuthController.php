@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,7 +19,13 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-
+        $status = "";
+        if ($user->teacher_id) {
+            $status = Teacher::where('id', $user->teacher_id)->first()?->status;
+        } else if ($user->student_id) {
+            // $status = Student::where('id', $user->student_id)->first()?->status;
+            $status = 'skdksd';
+        }
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'Invalid credentials'
@@ -31,7 +38,8 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login successful!',
             'user' => $user,
-            'token' => $token
+            'token' => $token,
+            'status' => $status
         ], 200);
     }
 
