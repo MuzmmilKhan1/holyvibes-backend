@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();  
-            $table->foreignId('teacherID')->nullable()->constrained('teachers')->onDelete('cascade');
-            $table->foreignId('studentID')->nullable()->constrained('students')->onDelete('cascade');
+            $table->foreignId('teacher_id')->nullable()->constrained('teachers')->onDelete('cascade');
+            $table->foreignId('student_id')->nullable()->constrained('students')->onDelete('cascade');
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
@@ -20,7 +20,6 @@ return new class extends Migration
         });
         
     }
-
     public function down(): void
     {
         Schema::dropIfExists('users');

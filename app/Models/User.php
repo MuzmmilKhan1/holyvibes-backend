@@ -21,12 +21,12 @@ class User extends Model implements JWTSubject
     ];
 
     // JWT required methods
-    public function getJWTIdentifier()
+    public function getJWTIdentifier(): mixed
     {
         return $this->getKey();
     }
 
-    public function getJWTCustomClaims()
+    public function getJWTCustomClaims(): array
     {
         return [];
     }

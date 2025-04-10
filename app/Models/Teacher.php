@@ -26,4 +26,12 @@ class Teacher extends Model
         'application_date',
         'status',
     ];
+    public function classTimings()
+    {
+        return $this->hasMany(ClassTimings::class,foreignKey:'teacherID');
+    }
+    public function courses()
+    {
+        return $this->hasMany(Course::class,foreignKey:'teacherID');
+    }
 }

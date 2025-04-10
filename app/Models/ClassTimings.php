@@ -11,16 +11,22 @@ class ClassTimings extends Model
     protected $fillable = [
         'classID',
         'teacherID',
+        'courseID',
         'preferred_time_from',
         'preferred_time_to',
-        
     ];
-    public function course()
-    {
-        return $this->belongsTo(Course::class, 'courseID');
-    }
+    // public function class()
+    // {
+    //     return $this->belongsTo(ClassModel::class, 'classID'); // Assuming the model for `classes` is ClassModel
+    // }
+
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacherID');
+    }
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class, 'courseID');
     }
 }

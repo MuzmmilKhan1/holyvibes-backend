@@ -11,6 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('classID')->nullable()->constrained('classes')->onDelete('cascade');
             $table->foreignId('teacherID')->constrained('teachers')->onDelete('cascade');
+            $table->foreignId('courseID')->nullable()->constrained('courses')->onDelete('cascade');
             $table->time('preferred_time_from');
             $table->time('preferred_time_to');
             $table->timestamps();

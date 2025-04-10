@@ -9,7 +9,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
- 
+
     public function login(Request $request)
     {
         $request->validate([
@@ -35,26 +35,26 @@ class AuthController extends Controller
         ], 200);
     }
 
-    
-    
+
+
     public function create_admin()
     {
         $existingAdmin = User::where("role", "admin")->first();
-        
+
         if ($existingAdmin) {
             return response()->json([
                 'message' => 'Admin already exists!',
                 'user' => $existingAdmin
             ], 200);
         }
-        
+
         $newAdmin = User::create([
             'name' => "admin",
             'email' => "admin@gmail.com",
             'password' => Hash::make("123456"),
             'role' => "admin"
         ]);
-        
+
         return response()->json([
             'message' => 'Admin created successfully!',
             'user' => $newAdmin
@@ -70,7 +70,7 @@ class AuthController extends Controller
         ]);
 
         $isUserExist = User::where("email", $request->email)->first();
-        echo($request->name);
+        echo ($request->name);
 
         if ($isUserExist) {
             return response()->json([
