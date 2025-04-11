@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
-use App\Services\FileServices;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -59,24 +59,31 @@ class CourseContoller extends Controller
 
     public function get_teacher_courses_time(Request $request)
     {
-        $token = $request->header('token');
-        // if (!$token) {
-        //     return response()->json(['error' => 'Token not provided'], 401);
-        // }
-        // $payload = JWTAuth::setToken($token)->getPayload();
-        // $userId = $payload->get('sub');
         try {
-            // $courses = Course::where('teacherID', $userId)->get();
+            $token = $request->header('token');
+            if (!$token) {
+                return response()->json(['error' => 'Token not provided'], 401);
+            }
+            $payload = JWTAuth::setToken($token)->getPayload();
+            $userId = $payload->get('sub');
+            $user = User::find($userId);
+            if (!$user || !$user->teacher_id) {
+                return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
+            }
+            $courses = Course::with('classTimings')
+                ->where('teacherID', $user->teacher_id)
+                ->get();
             return response()->json([
-                'message' => 'Courses found successfully!',
-                'token' => $token,
+                'message' => 'Courses with class timings fetched successfully!',
+                'courses' => $courses,
             ], 200);
-
         } catch (JWTException $e) {
             return response()->json(['error' => 'Invalid or expired token'], 401);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
-
+    
 
 
 }

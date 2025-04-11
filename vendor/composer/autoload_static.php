@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInita0f39970d4f2493f1aa58a52853fe036
+class ComposerStaticInit332804584eb996ada7dc2391d060a493
 {
     public static $files = array (
         '0e6d7bf4a5811bfa5cf40c5ccd6fae6a' => __DIR__ . '/..' . '/symfony/polyfill-mbstring/bootstrap.php',
@@ -539,10 +539,12 @@ class ComposerStaticInita0f39970d4f2493f1aa58a52853fe036
     public static $classMap = array (
         'App\\Console\\Commands\\DropAllTables' => __DIR__ . '/../..' . '/app/Console/Commands/DropAllTables.php',
         'App\\Http\\Controllers\\AuthController' => __DIR__ . '/../..' . '/app/Http/Controllers/AuthController.php',
+        'App\\Http\\Controllers\\ClassController' => __DIR__ . '/../..' . '/app/Http/Controllers/ClassController.php',
         'App\\Http\\Controllers\\Controller' => __DIR__ . '/../..' . '/app/Http/Controllers/Controller.php',
         'App\\Http\\Controllers\\CourseContoller' => __DIR__ . '/../..' . '/app/Http/Controllers/CourseContoller.php',
         'App\\Http\\Controllers\\TeacherController' => __DIR__ . '/../..' . '/app/Http/Controllers/TeacherController.php',
         'App\\Http\\Middleware\\DecodeJwtToken' => __DIR__ . '/../..' . '/app/Http/Middleware/DecodeJwtToken.php',
+        'App\\Models\\ClassModel' => __DIR__ . '/../..' . '/app/Models/ClassModel.php',
         'App\\Models\\ClassTimings' => __DIR__ . '/../..' . '/app/Models/ClassTimings.php',
         'App\\Models\\Course' => __DIR__ . '/../..' . '/app/Models/Course.php',
         'App\\Models\\Teacher' => __DIR__ . '/../..' . '/app/Models/Teacher.php',
@@ -6820,9 +6822,9 @@ class ComposerStaticInita0f39970d4f2493f1aa58a52853fe036
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInita0f39970d4f2493f1aa58a52853fe036::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInita0f39970d4f2493f1aa58a52853fe036::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInita0f39970d4f2493f1aa58a52853fe036::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit332804584eb996ada7dc2391d060a493::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit332804584eb996ada7dc2391d060a493::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit332804584eb996ada7dc2391d060a493::$classMap;
 
         }, null, ClassLoader::class);
     }

@@ -13,9 +13,9 @@ return new class extends Migration {
             $table->foreignId('teacherID')->constrained('teachers')->onDelete('cascade');
             $table->string('title');
             $table->text('description');
-            $table->string('classLink');
-            $table->integer('total_seats');
-            $table->integer('filled_seats')->default(0);
+            $table->string('classLink')->nullable();
+            $table->integer('total_seats')->nullable();
+            $table->integer('filled_seats')->default(0)->nullable();
             $table->timestamps();
         });
     }

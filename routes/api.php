@@ -3,6 +3,7 @@
 use App\Http\Controllers\TeacherController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ClassController;
 use App\Http\Controllers\CourseContoller;
 
 
@@ -32,6 +33,13 @@ Route::prefix('teacher')->group(function () {
     Route::get('/get', [TeacherController::class, "get_teachers"]);
     Route::post('/block', [TeacherController::class, "block_or_unblock_teacher"]);
     Route::post('/delete', [TeacherController::class, "delete_teacher"]);
+});
+
+
+// class routes
+Route::prefix('class')->group(function () {
+    Route::post('/create', [ClassController::class, "create_class"]);
+    Route::get('/get', [ClassController::class, "get_teacher_classes"]);
 
 });
 

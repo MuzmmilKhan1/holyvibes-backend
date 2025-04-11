@@ -8,10 +8,12 @@ $baseDir = dirname($vendorDir);
 return array(
     'App\\Console\\Commands\\DropAllTables' => $baseDir . '/app/Console/Commands/DropAllTables.php',
     'App\\Http\\Controllers\\AuthController' => $baseDir . '/app/Http/Controllers/AuthController.php',
+    'App\\Http\\Controllers\\ClassController' => $baseDir . '/app/Http/Controllers/ClassController.php',
     'App\\Http\\Controllers\\Controller' => $baseDir . '/app/Http/Controllers/Controller.php',
     'App\\Http\\Controllers\\CourseContoller' => $baseDir . '/app/Http/Controllers/CourseContoller.php',
     'App\\Http\\Controllers\\TeacherController' => $baseDir . '/app/Http/Controllers/TeacherController.php',
     'App\\Http\\Middleware\\DecodeJwtToken' => $baseDir . '/app/Http/Middleware/DecodeJwtToken.php',
+    'App\\Models\\ClassModel' => $baseDir . '/app/Models/ClassModel.php',
     'App\\Models\\ClassTimings' => $baseDir . '/app/Models/ClassTimings.php',
     'App\\Models\\Course' => $baseDir . '/app/Models/Course.php',
     'App\\Models\\Teacher' => $baseDir . '/app/Models/Teacher.php',

@@ -25,6 +25,7 @@ return new class extends Migration {
             $table->string('institution');
             $table->date('application_date');
             $table->enum('status', ['pending', 'blocked', 'allowed'])->default('pending');
+            $table->json('class_course_schedule')->nullable();
             $table->timestamps();
         });
     }

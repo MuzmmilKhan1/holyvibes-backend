@@ -17,6 +17,7 @@ class Teacher extends Model
         'contact_number',
         'email',
         'current_address',
+        'class_course_schedule',
         'experience_Quran',
         'other_experience',
         'languages_spoken',
@@ -25,6 +26,9 @@ class Teacher extends Model
         'institution',
         'application_date',
         'status',
+    ];
+    protected $casts = [
+        'class_course_schedule' => 'array',
     ];
     public function classTimings()
     {
