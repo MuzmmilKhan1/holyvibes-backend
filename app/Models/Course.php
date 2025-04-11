@@ -9,6 +9,8 @@ class Course extends Model
 {
     use HasFactory;
 
+  
+
     protected $fillable = [
         'teacherID',
         'name',

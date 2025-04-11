@@ -22,6 +22,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('course')->group(function () {
     Route::post('/create-course', [CourseContoller::class, "create_course"]);
     Route::get('/get', [CourseContoller::class, "get"]);
+    Route::get('/get-teacher-courses-time', [CourseContoller::class, "get_teacher_courses_time"]);
 });
 
 // teacher routes

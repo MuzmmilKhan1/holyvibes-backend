@@ -542,6 +542,7 @@ class ComposerStaticInita0f39970d4f2493f1aa58a52853fe036
         'App\\Http\\Controllers\\Controller' => __DIR__ . '/../..' . '/app/Http/Controllers/Controller.php',
         'App\\Http\\Controllers\\CourseContoller' => __DIR__ . '/../..' . '/app/Http/Controllers/CourseContoller.php',
         'App\\Http\\Controllers\\TeacherController' => __DIR__ . '/../..' . '/app/Http/Controllers/TeacherController.php',
+        'App\\Http\\Middleware\\DecodeJwtToken' => __DIR__ . '/../..' . '/app/Http/Middleware/DecodeJwtToken.php',
         'App\\Models\\ClassTimings' => __DIR__ . '/../..' . '/app/Models/ClassTimings.php',
         'App\\Models\\Course' => __DIR__ . '/../..' . '/app/Models/Course.php',
         'App\\Models\\Teacher' => __DIR__ . '/../..' . '/app/Models/Teacher.php',

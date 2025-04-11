@@ -15,31 +15,26 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => 'required|string|email',
-            'password' => 'required|string'
+            'password' => 'required|string',
         ]);
-
         $user = User::where('email', $request->email)->first();
-        $status = "";
-        if ($user->teacher_id) {
-            $status = Teacher::where('id', $user->teacher_id)->first()?->status;
-        } else if ($user->student_id) {
-            // $status = Student::where('id', $user->student_id)->first()?->status;
-            $status = 'skdksd';
-        }
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Invalid credentials'
+                'message' => 'Invalid credentials',
             ], 401);
         }
-
-        // Create JWT token
+        $status = null;
+        if ($user->teacher_id !== null) {
+            $status = Teacher::where('id', $user->teacher_id)->first()?->status;
+        } elseif ($user->student_id !== null) {
+            // $status = Student::where('id', $user->student_id)->first()?->status;
+        }
         $token = JWTAuth::fromUser($user);
-
         return response()->json([
             'message' => 'Login successful!',
             'user' => $user,
             'token' => $token,
-            'status' => $status
+            'status' => $status,
         ], 200);
     }
 
