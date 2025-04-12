@@ -25,5 +25,8 @@ class ClassModel extends Model
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacherID');
+    }  public function classTimings()
+    {
+        return $this->hasMany(ClassTimings::class, 'classID');
     }
 }

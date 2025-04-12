@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\CourseContoller;
-
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\StudentPolicyController;
 
 Route::get('/ping', function () {
     return 'pong';
@@ -40,6 +41,23 @@ Route::prefix('teacher')->group(function () {
 Route::prefix('class')->group(function () {
     Route::post('/create', [ClassController::class, "create_class"]);
     Route::get('/get', [ClassController::class, "get_teacher_classes"]);
+    Route::get('/get-all', [ClassController::class, "get_all"]);
+    Route::get('/get/single-class-data/{classID}', [ClassController::class, "get_single_class_data"]);
+    Route::get('/get/{courseID}', [ClassController::class, "get_class"]);
+    Route::get('/get/class-time/{classID}', [ClassController::class, "get_class_time"]);
+    Route::put('/edit', [ClassController::class, "edit_class"]);
+});
+
+// student policy routes
+Route::prefix('student-policy')->group(function () {
+    Route::post('/create-and-edit', [StudentPolicyController::class, "create_edit_policy"]);
+    Route::get('/get', [StudentPolicyController::class, "get_policy"]);
+    Route::delete('/delete/{policyID}', [StudentPolicyController::class, "delete_policy"]);
 
 });
 
+// student event routes
+Route::prefix('event')->group(function () {
+    Route::post('/create-event', [EventController::class, 'create_or_updateEvent']);
+    Route::get('/get', [EventController::class, 'get_events']);
+});
