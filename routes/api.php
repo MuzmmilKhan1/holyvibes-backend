@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\CourseContoller;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentPolicyController;
 
 Route::get('/ping', function () {
@@ -60,4 +61,13 @@ Route::prefix('student-policy')->group(function () {
 Route::prefix('event')->group(function () {
     Route::post('/create-event', [EventController::class, 'create_or_updateEvent']);
     Route::get('/get', [EventController::class, 'get_events']);
+});
+
+
+// student routes
+Route::prefix('student')->group(function () {
+    Route::post('/register', [StudentController::class, 'register_student']);
+    Route::get('/get', [StudentController::class, 'get_student']);
+    Route::get('/get/{studentID}', [StudentController::class, 'get_single_std_data']);
+
 });

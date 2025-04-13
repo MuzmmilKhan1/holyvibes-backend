@@ -31,4 +31,13 @@ class Student extends Model
     {
         return $this->hasMany(ClassEnrollment::class, 'studentId');
     }
+    public function billing()
+    {
+        return $this->hasMany(Billing::class, 'studentID');
+    }
+    public function courses()
+    {
+        return $this->belongsToMany(Course::class, 'studentID');
+    }
+    
 }
