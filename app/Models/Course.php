@@ -25,4 +25,9 @@ class Course extends Model
     {
         return $this->hasMany(ClassTimings::class,foreignKey:'courseID');
     }
+
+    public function enrollment()
+    {
+        return $this->hasMany(Enrollment::class, 'classID');
+    }
 }

@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ClassEnrollment extends Model
+class Enrollment extends Model
 {
     use HasFactory;
 
-    protected $table = 'class_enrollment';
+    protected $table = 'enrollment';
 
     protected $fillable = [
         'studentId',
         'classId',
+        'courseId'
     ];
 
     // Relationships
@@ -23,6 +24,11 @@ class ClassEnrollment extends Model
     }
     public function class()
     {
-        return $this->belongsTo(ClassModel::class, 'classId'); // assuming the model name is Classes
+        return $this->belongsTo(ClassModel::class, 'classId'); 
     }
+    public function course()
+    {
+        return $this->belongsTo(Course::class, 'courseId'); 
+    }
+    
 }

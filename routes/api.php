@@ -18,8 +18,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, "login"]);
     Route::post('/create-account', [AuthController::class, "signup"]);
     Route::get('/create-admin', [AuthController::class, "create_admin"]);
-});
+    Route::get('/get', [AuthController::class, "get_user"]);
 
+});
 
 // course routes
 Route::prefix('course')->group(function () {
@@ -35,6 +36,7 @@ Route::prefix('teacher')->group(function () {
     Route::get('/get', [TeacherController::class, "get_teachers"]);
     Route::post('/block', [TeacherController::class, "block_or_unblock_teacher"]);
     Route::post('/delete', [TeacherController::class, "delete_teacher"]);
+    Route::get('/get-teacher-course', [TeacherController::class, "get_teacher_course"]);
 });
 
 
@@ -63,11 +65,13 @@ Route::prefix('event')->group(function () {
     Route::get('/get', [EventController::class, 'get_events']);
 });
 
-
 // student routes
 Route::prefix('student')->group(function () {
     Route::post('/register', [StudentController::class, 'register_student']);
     Route::get('/get', [StudentController::class, 'get_student']);
     Route::get('/get/{studentID}', [StudentController::class, 'get_single_std_data']);
-
+    Route::get('/get/billing-details/{studentID}', [StudentController::class, 'get_billing_details']);
+    Route::post('/assign_login_credentials', [StudentController::class, "assign_login_credentials"]);
+    Route::post('/get/requested-class-course', [StudentController::class, "get_std_class_course_data"]);
+    Route::get('/get/allocated-class-course/{studentID}', [StudentController::class, "get_allocated_class_course"]);
 });

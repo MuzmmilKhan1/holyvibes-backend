@@ -96,6 +96,24 @@ class AuthController extends Controller
 
     }
 
+    public function get_user(Request $request)
+    {
+        $token = $request->header('token');
+        if (!$token) {
+            return response()->json(['error' => 'Token not provided'], 401);
+        }
+        try {
+            $payload = JWTAuth::setToken($token)->getPayload();
+            $userId = $payload->get('sub');
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Invalid token'], 401);
+        }
+        $user = User::find($userId);
+        return response()->json([
+            'message' => 'User found successfully!',
+            'user' => $user
+        ], 201);
+    }
 
 
 }

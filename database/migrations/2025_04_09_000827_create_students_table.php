@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->string('contact_number');
             $table->string('alternate_contact_number')->nullable();
             $table->string('preferred_language')->nullable();
+            $table->enum('status', ['pending', 'blocked', 'allowed'])->default('pending');
             $table->string('signature')->nullable();
             $table->date('registration_date');
             $table->json('class_course_data')->nullable();

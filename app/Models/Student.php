@@ -19,6 +19,8 @@ class Student extends Model
         'preferred_language',
         'signature',
         'registration_date',
+        'class_course_data',
+        'status'
     ];
 
     // Relationships
@@ -29,7 +31,7 @@ class Student extends Model
 
     public function classEnrollments()
     {
-        return $this->hasMany(ClassEnrollment::class, 'studentId');
+        return $this->hasMany(Enrollment::class, 'studentId');
     }
     public function billing()
     {

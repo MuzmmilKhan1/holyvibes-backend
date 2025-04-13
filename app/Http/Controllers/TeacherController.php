@@ -8,6 +8,7 @@ use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class TeacherController extends Controller
 {
@@ -137,6 +138,28 @@ class TeacherController extends Controller
         }
         return response()->json([
             'message' => 'Teacher deleted successfully.',
+        ], 200);
+    }
+
+    public function get_teacher_course(Request $request)
+    {
+        $token = $request->header('token');
+        if (!$token) {
+            return response()->json(['error' => 'Token not provided'], 401);
+        }
+        try {
+            $payload = JWTAuth::setToken($token)->getPayload();
+            $userId = $payload->get('sub');
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Invalid token'], 401);
+        }
+        $user = User::find($userId);
+
+        $courses = Course::where('teacherID', $user->teacher_id)->get();
+
+        return response()->json([
+            'message' => 'Course found successfully.',
+            'course' => $courses
         ], 200);
     }
 

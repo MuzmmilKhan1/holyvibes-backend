@@ -29,4 +29,11 @@ class ClassModel extends Model
     {
         return $this->hasMany(ClassTimings::class, 'classID');
     }
+
+    public function enrollment()
+    {
+        return $this->hasMany(Enrollment::class, 'classID');
+    }
+
+
 }

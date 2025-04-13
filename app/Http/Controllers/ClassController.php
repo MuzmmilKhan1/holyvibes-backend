@@ -74,7 +74,7 @@ class ClassController extends Controller
             return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
         }
         $teacherId = $user->teacher_id;
-        $classes = ClassModel::where('teacherID', $teacherId)->get();
+        $classes = ClassModel::with(['course'])->where('teacherID', $teacherId)->get();
         return response()->json([
             'message' => 'Classes found successfully!',
             'data' => $classes,
@@ -148,7 +148,7 @@ class ClassController extends Controller
     {
         try {
             if ($classID) {
-                $class = ClassModel::with(['classTimings', 'teacher'])->where('id', $classID)->first();
+                $class = ClassModel::with(['classTimings', 'teacher', 'course'])->where('id', $classID)->first();
                 if (!$class) {
                     return response()->json([
                         'message' => 'Class not found!',
