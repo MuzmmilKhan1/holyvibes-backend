@@ -10,6 +10,7 @@ class Teacher extends Model
     use HasFactory;
     protected $table = "teachers";
     protected $fillable = [
+        'teach_id',
         'name',
         'date_of_birth',
         'gender',
@@ -26,6 +27,7 @@ class Teacher extends Model
         'institution',
         'application_date',
         'status',
+        'class_timings',
     ];
     protected $casts = [
         'class_course_schedule' => 'array',

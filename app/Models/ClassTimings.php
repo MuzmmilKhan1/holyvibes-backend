@@ -12,6 +12,7 @@ class ClassTimings extends Model
         'classID',
         'teacherID',
         'courseID',
+        'studentID',
         'preferred_time_from',
         'preferred_time_to',
     ];

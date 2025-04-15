@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ClassTimings;
 use App\Models\Course;
+use App\Models\CourseTeacher;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -36,7 +37,20 @@ class TeacherController extends Controller
             "course.*.timings.*.from" => "required|date_format:H:i",
             "course.*.timings.*.to" => "required|date_format:H:i",
         ]);
-        $validatedData['class_course_schedule'] = json_encode($validatedData['course']);
+
+        $classTimings = [];
+        foreach ($validatedData['course'] as $course) {
+            foreach ($course['timings'] as $timing) {
+                $classTimings[] = [
+                    'course_id' => $course['id'],
+                    'course_name' => $course['name'],
+                    'from' => $timing['from'],
+                    'to' => $timing['to'],
+                ];
+            }
+        }
+        unset($validatedData['course']);
+        $validatedData['class_timings'] = json_encode($classTimings);
         $newTeacher = Teacher::create($validatedData);
         return response()->json([
             'message' => 'Your application has been submitted successfully and is pending admin approval.',
@@ -55,69 +69,58 @@ class TeacherController extends Controller
         ], 200);
     }
 
-
     public function assign_login_credentials(Request $request)
     {
         $validatedData = $request->validate([
-            'teacherID' => 'required',
+            'teacherID' => 'required|integer|exists:teachers,id',
             'name' => 'required|string',
-            'email' => 'required|string',
+            'email' => 'required|string|email',
             'password' => 'required|string|min:6',
-            'courseIds' => 'required|string',
+            'courseIds' => 'required|array',
+            'courseIds.*.course_id' => 'required|integer|exists:courses,id',
+            'courseIds.*.course_name' => 'required|string',
+            'courseIds.*.from' => 'required|date_format:H:i',
+            'courseIds.*.to' => 'required|date_format:H:i',
         ]);
-        $courseIds = json_decode($validatedData['courseIds'], true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return response()->json([
-                'message' => 'Invalid course data format.',
-            ], 400);
-        }
+        
+
+        // Find teacher
         $teacher = Teacher::find($validatedData['teacherID']);
-        if ($teacher) {
-            $teacher->status = 'allowed';
-            $teacher->name = $validatedData['name'];
-            $teacher->email = $validatedData['email'];
-            $teacher->save();
-            $newUser = User::create([
-                'teacher_id' => $validatedData['teacherID'],
-                'name' => $validatedData["name"],
-                'email' => $validatedData["email"],
-                'password' => Hash::make($validatedData["password"]),
-                'role' => 'teacher',
-            ]);
-            foreach ($courseIds as $course) {
-                $courseModel = Course::find($course['id']);
-                $courseModel->teacherID = $teacher->id;
-                $courseModel->save();
-                if ($courseModel) {
-                    foreach ($course['timings'] as $timing) {
-                        ClassTimings::updateOrCreate(
-                            [
-                                'teacherID' => $teacher->id,
-                                'courseID' => $courseModel->id,
-                                'preferred_time_from' => $timing['from'],
-                                'preferred_time_to' => $timing['to'],
-                            ],
-                            [
-                                'teacherID' => $teacher->id,
-                                'courseID' => $courseModel->id,
-                                'preferred_time_from' => $timing['from'],
-                                'preferred_time_to' => $timing['to'],
-                            ]
-                        );
-                    }
-                }
-            }
-            return response()->json([
-                'message' => 'Teacher login credentials created successfully',
-                'user' => $newUser,
-            ], 200);
-        } else {
+        if (!$teacher) {
             return response()->json([
                 'message' => 'Teacher not found',
             ], 404);
         }
-    }
 
+        // Update teacher info
+        $teacher->update([
+            'teach_id' => $validatedData['teacherID'],
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'status' => 'allowed',
+        ]);
+
+        // Create user account
+        $user = User::create([
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'password' => Hash::make($validatedData['password']),
+            'role' => 'teacher',
+            'teacherID' => $teacher->id,
+        ]);
+
+        // Assign teacher to courses
+        foreach ($validatedData['courseIds'] as $course) {
+            CourseTeacher::firstOrCreate([
+                'teacherID' => $teacher->id,
+                'courseID' => $course['course_id'],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Login credentials assigned successfully.',
+        ], 200);
+    }
 
 
     public function delete_teacher(Request $request)
@@ -162,6 +165,7 @@ class TeacherController extends Controller
             'course' => $courses
         ], 200);
     }
+
 
     public function block_or_unblock_teacher(Request $request)
     {

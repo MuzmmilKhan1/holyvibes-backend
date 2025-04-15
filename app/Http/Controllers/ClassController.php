@@ -40,6 +40,7 @@ class ClassController extends Controller
             'description' => $validatedData['description'],
             'courseID' => $validatedData['selectedCourseId'],
             'teacherID' => $teacherId,
+            'classLink' => $request->link,
         ]);
         $timing = ClassTimings::find($validatedData['selectedTimingID']);
         if ($timing) {
@@ -148,7 +149,7 @@ class ClassController extends Controller
     {
         try {
             if ($classID) {
-                $class = ClassModel::with(['classTimings', 'teacher', 'course'])->where('id', $classID)->first();
+                $class = ClassModel::with(['classTimings', 'teacher', 'course.classTimings'])->where('id', $classID)->first();
                 if (!$class) {
                     return response()->json([
                         'message' => 'Class not found!',
@@ -200,5 +201,48 @@ class ClassController extends Controller
         }
     }
 
+    public function edit_by_teacher_class(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'id' => 'required|integer|exists:classes,id',
+                'description' => 'required|string',
+                'link' => 'required|string|url',
+                'selectedTimingID' => 'required|integer|exists:class_timings,id',
+                'title' => 'required|string',
+            ]);
+            $class = ClassModel::find($validatedData['id']);
+            if (!$class) {
+                return response()->json([
+                    'message' => 'Class not found!',
+                ], 404);
+            }
+            $class->update([
+                'title' => $validatedData['title'],
+                'description' => $validatedData['description'],
+                'classLink' => $validatedData['link'],
+            ]);
+            $classTiming = ClassTimings::find($validatedData['selectedTimingID']);
+            if (!$classTiming) {
+                return response()->json([
+                    'message' => 'Class timing not found!',
+                ], 404);
+            }
+            $classTiming->classID = $class->id;
+            $classTiming->save();
+            return response()->json([
+                'message' => 'Class and timing updated successfully!',
+                'class' => $class->fresh(),
+                'classTiming' => $classTiming,
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
 }

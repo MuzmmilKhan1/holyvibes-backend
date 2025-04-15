@@ -10,6 +10,7 @@ class Student extends Model
     use HasFactory;
 
     protected $fillable = [
+        'std_id',
         'name',
         'date_of_birth',
         'guardian_name',
@@ -41,5 +42,5 @@ class Student extends Model
     {
         return $this->belongsToMany(Course::class, 'studentID');
     }
-    
+
 }

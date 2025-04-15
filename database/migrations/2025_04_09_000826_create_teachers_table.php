@@ -10,6 +10,7 @@ return new class extends Migration {
     {
         Schema::create('teachers', function (Blueprint $table) {
             $table->id();
+            $table->string('teach_id')->nullable();
             $table->string('name');
             $table->date('date_of_birth');
             $table->string('gender');
@@ -24,8 +25,8 @@ return new class extends Migration {
             $table->string('qualification');
             $table->string('institution');
             $table->date('application_date');
+            $table->json('class_timings')->nullable();
             $table->enum('status', ['pending', 'blocked', 'allowed'])->default('pending');
-            $table->json('class_course_schedule')->nullable();
             $table->timestamps();
         });
     }

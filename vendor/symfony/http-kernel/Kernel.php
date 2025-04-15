@@ -92,8 +92,6 @@ abstract class Kernel implements KernelInterface, RebootableInterface, Terminabl
         }
     }
 
-    
-
     public function __clone()
     {
         $this->booted = false;

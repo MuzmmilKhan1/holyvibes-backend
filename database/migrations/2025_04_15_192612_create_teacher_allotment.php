@@ -7,17 +7,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('classes', function (Blueprint $table) {
+        Schema::create('teacher_allotment', function (Blueprint $table) {
             $table->id();
             $table->foreignId('courseID')->constrained('courses')->onDelete('cascade');
             $table->foreignId('teacherID')->constrained('teachers')->onDelete('cascade');
-            $table->string('title');
-            $table->string('classLink')->nullable();
+            $table->foreignId('classTimingsID')->constrained('class_timings')->onDelete('cascade');
+            $table->foreignId('studentID')->constrained('students')->onDelete('cascade');
             $table->timestamps();
         });
     }
+
     public function down(): void
     {
-        Schema::dropIfExists('classes');
+        Schema::dropIfExists('teacher_allotment');
     }
 };
