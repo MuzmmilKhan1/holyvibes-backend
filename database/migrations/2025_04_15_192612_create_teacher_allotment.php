@@ -11,12 +11,10 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('courseID')->constrained('courses')->onDelete('cascade');
             $table->foreignId('teacherID')->constrained('teachers')->onDelete('cascade');
-            $table->foreignId('classTimingsID')->constrained('class_timings')->onDelete('cascade');
             $table->foreignId('studentID')->constrained('students')->onDelete('cascade');
             $table->timestamps();
         });
     }
-
     public function down(): void
     {
         Schema::dropIfExists('teacher_allotment');

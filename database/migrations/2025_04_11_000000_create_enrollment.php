@@ -12,13 +12,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('studentId')->constrained('students')->onDelete('cascade');
             $table->foreignId('classId')->constrained('classes')->onDelete('cascade');
-            $table->foreignId('courseId')->constrained('classes')->onDelete('cascade');
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('class_enrollment');
+        Schema::dropIfExists('enrollment');
     } 
 };

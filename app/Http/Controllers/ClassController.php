@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\ClassModel;
 use App\Models\ClassTimings;
 use App\Models\Course;
+use App\Models\StudentClassTimings;
+use App\Models\TeacherClassTimings;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\DB;
 
 class ClassController extends Controller
 {
@@ -16,44 +19,82 @@ class ClassController extends Controller
     {
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'selectedCourseId' => 'required|integer',
-            'selectedTimingID' => 'required|integer',
+            'link' => 'required|string|max:255',
+            'courseId' => 'required|integer|exists:courses,id',
+            'classTime.from' => 'required|date_format:H:i',
+            'classTime.to' => 'required|date_format:H:i',
         ]);
+
         $token = $request->header('token');
         if (!$token) {
             return response()->json(['error' => 'Token not provided'], 401);
         }
+
         try {
             $payload = JWTAuth::setToken($token)->getPayload();
             $userId = $payload->get('sub');
         } catch (\Exception $e) {
             return response()->json(['error' => 'Invalid token'], 401);
         }
+
         $user = User::find($userId);
         if (!$user || !$user->teacher_id) {
             return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
         }
+
         $teacherId = $user->teacher_id;
-        $class = ClassModel::create([
-            'title' => $validatedData['title'],
-            'description' => $validatedData['description'],
-            'courseID' => $validatedData['selectedCourseId'],
-            'teacherID' => $teacherId,
-            'classLink' => $request->link,
-        ]);
-        $timing = ClassTimings::find($validatedData['selectedTimingID']);
-        if ($timing) {
-            $timing->classID = $class->id;
-            $timing->save();
-        } else {
-            return response()->json(['error' => 'Invalid timing ID'], 404);
+        $courseId = $validatedData['courseId'];
+
+        DB::beginTransaction();
+
+        try {
+            // Create the class
+            $class = ClassModel::create([
+                'title' => $validatedData['title'],
+                'classLink' => $validatedData['link'],
+                'courseID' => $courseId,
+                'teacherID' => $teacherId,
+            ]);
+
+            // Find matching student_class_timings
+            $matchingStudents = StudentClassTimings::where('courseID', $courseId)
+                ->where('preferred_time_from', $validatedData['classTime']['from'])
+                ->where('preferred_time_to', $validatedData['classTime']['to'])
+                ->whereHas('teacherAllotment', function ($query) use ($teacherId, $courseId) {
+                    $query->where('teacherID', $teacherId)
+                        ->where('courseID', $courseId);
+                })
+                ->get();
+
+            // Update classID for each matched student
+            foreach ($matchingStudents as $studentTiming) {
+                $studentTiming->classID = $class->id;
+                $studentTiming->save();
+            }
+
+            TeacherClassTimings::create([
+                'classID' => $class->id,
+                'taecherID' => $teacherId,
+                'courseID' => $courseId,
+                'preferred_time_from' => $validatedData['classTime']['from'],
+                'preferred_time_to' => $validatedData['classTime']['to'],
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Class created and students updated successfully!',
+                'classId' => $class->id,
+                'updatedStudentsCount' => $matchingStudents->count(),
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Something went wrong.',
+                'details' => $e->getMessage(),
+            ], 500);
         }
-        return response()->json([
-            'message' => 'Class created successfully!',
-            'data' => $class,
-            'classTimingID' => $timing->id,
-        ], 201);
     }
 
 
@@ -67,16 +108,22 @@ class ClassController extends Controller
         try {
             $payload = JWTAuth::setToken($token)->getPayload();
             $userId = $payload->get('sub');
+
         } catch (\Exception $e) {
             return response()->json(['error' => 'Invalid token'], 401);
         }
+
         $user = User::find($userId);
         if (!$user || !$user->teacher_id) {
             return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
         }
         $teacherId = $user->teacher_id;
-        $classes = ClassModel::with(['course'])->where('teacherID', $teacherId)->get();
-        return response()->json([
+
+        $classes = ClassModel::with(['course:id,name','teacherClassTimings'])
+            ->where('teacherID', $teacherId)
+            ->get(['id', 'title', 'classLink', 'courseID', 'teacherID']); 
+        
+            return response()->json([
             'message' => 'Classes found successfully!',
             'data' => $classes,
         ], 201);
@@ -122,7 +169,7 @@ class ClassController extends Controller
     {
         try {
             if ($classID) {
-                $class = ClassTimings::where('classID', $classID)->get();
+                $class = TeacherClassTimings::where('classID', $classID)->get();
                 if (!$class) {
                     return response()->json([
                         'message' => 'Class timing not found!',
@@ -222,7 +269,7 @@ class ClassController extends Controller
                 'description' => $validatedData['description'],
                 'classLink' => $validatedData['link'],
             ]);
-            $classTiming = ClassTimings::find($validatedData['selectedTimingID']);
+            $classTiming = TeacherClassTimings::find($validatedData['selectedTimingID']);
             if (!$classTiming) {
                 return response()->json([
                     'message' => 'Class timing not found!',

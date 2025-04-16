@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ class AuthController extends Controller
         if ($user->teacher_id !== null) {
             $status = Teacher::where('id', $user->teacher_id)->first()?->status;
         } elseif ($user->student_id !== null) {
-            // $status = Student::where('id', $user->student_id)->first()?->status;
+            $status = Student::where('id', $user->student_id)->first()?->status;
         }
         $token = JWTAuth::fromUser($user);
         return response()->json([
@@ -37,7 +38,6 @@ class AuthController extends Controller
             'status' => $status,
         ], 200);
     }
-
 
 
     public function create_admin()

@@ -72,7 +72,7 @@ class TeacherController extends Controller
     public function assign_login_credentials(Request $request)
     {
         $validatedData = $request->validate([
-            'teacherID' => 'required|integer|exists:teachers,id',
+            'teacherID' => 'required|integer',
             'name' => 'required|string',
             'email' => 'required|string|email',
             'password' => 'required|string|min:6',
@@ -82,7 +82,7 @@ class TeacherController extends Controller
             'courseIds.*.from' => 'required|date_format:H:i',
             'courseIds.*.to' => 'required|date_format:H:i',
         ]);
-        
+
 
         // Find teacher
         $teacher = Teacher::find($validatedData['teacherID']);
@@ -106,7 +106,7 @@ class TeacherController extends Controller
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
             'role' => 'teacher',
-            'teacherID' => $teacher->id,
+            'teacher_id' => $teacher->id,
         ]);
 
         // Assign teacher to courses
@@ -157,9 +157,7 @@ class TeacherController extends Controller
             return response()->json(['error' => 'Invalid token'], 401);
         }
         $user = User::find($userId);
-
-        $courses = Course::where('teacherID', $user->teacher_id)->get();
-
+        $courses = CourseTeacher::with('course')->where('teacherID', $user->teacher_id)->get();
         return response()->json([
             'message' => 'Course found successfully.',
             'course' => $courses

@@ -14,10 +14,8 @@ class Enrollment extends Model
     protected $fillable = [
         'studentId',
         'classId',
-        'courseId'
     ];
 
-    // Relationships
     public function student()
     {
         return $this->belongsTo(Student::class, 'studentId');
@@ -26,9 +24,4 @@ class Enrollment extends Model
     {
         return $this->belongsTo(ClassModel::class, 'classId'); 
     }
-    public function course()
-    {
-        return $this->belongsTo(Course::class, 'courseId'); 
-    }
-    
 }

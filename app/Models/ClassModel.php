@@ -25,11 +25,16 @@ class ClassModel extends Model
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacherID');
-    }  public function classTimings()
+    }
+    public function studentClassTimings()
     {
-        return $this->hasMany(ClassTimings::class, 'classID');
+        return $this->hasMany(StudentClassTimings::class, 'classID');
     }
 
+    public function teacherClassTimings()
+    {
+        return $this->hasMany(TeacherClassTimings::class, 'classID');
+    }
     public function enrollment()
     {
         return $this->hasMany(Enrollment::class, 'classID');

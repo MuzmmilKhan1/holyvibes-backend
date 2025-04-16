@@ -9,11 +9,15 @@ use App\Models\ClassModel;
 use App\Models\ClassTimings;
 use App\Models\Course;
 use App\Models\Enrollment;
+use App\Models\StudentClassTimings;
+use App\Models\TeacherAllotment;
+use App\Models\TeacherClassTimings;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class StudentController extends Controller
 {
@@ -151,6 +155,9 @@ class StudentController extends Controller
             if (User::where('student_id', $student->id)->exists()) {
                 return response()->json(['error' => 'User account already exists for this student'], 409);
             }
+            if (User::where('email', $student->email)->exists()) {
+                return response()->json(['error' => 'This email is already taken by another user'], 409);
+            }
             User::create([
                 'student_id' => $student->id,
                 'name' => $request->name,
@@ -171,6 +178,65 @@ class StudentController extends Controller
         }
     }
 
+
+    public function get_std_courses(Request $request)
+    {
+        $token = $request->header('token');
+        if (!$token) {
+            return response()->json(['error' => 'Token not provided'], 401);
+        }
+        try {
+            $payload = JWTAuth::setToken($token)->getPayload();
+            $userId = $payload->get('sub');
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Invalid token'], 401);
+        }
+        $user = User::find($userId);
+        if (!$user || !$user->student_id) {
+            return response()->json(['error' => 'Unauthorized or invalid student'], 403);
+        }
+        $studentID = $user->student_id;
+        $allotments = TeacherAllotment::with(['course'])
+            ->where('studentID', $studentID)
+            ->get();
+        $uniqueCourses = $allotments
+            ->pluck('course')
+            ->unique('id')
+            ->values();
+        return response()->json([
+            'message' => 'Courses found successfully!',
+            'courses' => $uniqueCourses
+        ], 200);
+    }
+
+    public function get_std_courses_classes(Request $request, $courseID)
+    {
+        $token = $request->header('token');
+        if (!$token) {
+            return response()->json(['error' => 'Token not provided'], 401);
+        }
+        try {
+            $payload = JWTAuth::setToken($token)->getPayload();
+            $userId = $payload->get('sub');
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Invalid token'], 401);
+        }
+        $user = User::find($userId);
+        if (!$user || !$user->student_id) {
+            return response()->json(['error' => 'Unauthorized or invalid student'], 403);
+        }
+        $studentID = $user->student_id;
+        $classes = StudentClassTimings::with(['class','course'])->whereNotNull('classID')
+            ->where('courseID', $courseID)
+            ->where('studentID', $studentID)
+            ->get();
+
+        return response()->json([
+            'message' => 'Class timings found successfully!',
+            'classes' => $classes
+        ], 200);
+    }
+
     public function get_std_class_course_data(Request $request)
     {
         try {
@@ -182,7 +248,7 @@ class StudentController extends Controller
                 $classTimeID = $item['classTimeID'];
                 $class = ClassModel::find($classID);
                 $course = Course::find($courseID);
-                $classTime = ClassTimings::find($classTimeID);
+                $classTime = TeacherClassTimings::find($classTimeID);
 
                 $result[] = [
                     'class' => $class,

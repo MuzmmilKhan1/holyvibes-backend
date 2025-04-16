@@ -34,10 +34,10 @@ class Teacher extends Model
     ];
     public function classTimings()
     {
-        return $this->hasMany(ClassTimings::class,foreignKey:'teacherID');
+        return $this->hasMany(TeacherClassTimings::class, foreignKey: 'teacherID');
     }
     public function courses()
     {
-        return $this->hasMany(Course::class,foreignKey:'teacherID');
+        return $this->hasMany(Course::class, foreignKey: 'teacherID');
     }
 }
