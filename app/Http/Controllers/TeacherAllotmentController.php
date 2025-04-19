@@ -90,21 +90,7 @@ class TeacherAllotmentController extends Controller
     public function get_teacher_allotment(Request $request)
     {
         try {
-            $token = $request->header('token');
-            if (!$token) {
-                return response()->json(['error' => 'Token not provided'], 401);
-            }
-            try {
-                $payload = JWTAuth::setToken($token)->getPayload();
-                $userId = $payload->get('sub');
-            } catch (\Exception $e) {
-                return response()->json(['error' => 'Invalid token'], 401);
-            }
-            $user = User::find($userId);
-            if (!$user || !$user->teacher_id) {
-                return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
-            }
-
+            $user = $request->get('user');
             $teacherAllotment = TeacherAllotment::with(['student', 'course', 'teacher', 'studentClassTimings'])
                 ->where('teacherID', $user->teacher_id)
                 ->get();

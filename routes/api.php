@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AttendenceController;
 use App\Http\Controllers\TeacherAllotmentController;
 use App\Http\Controllers\TeacherClassTimingsController;
 use App\Http\Controllers\TeacherController;
+use App\Http\Middleware\TeacherAuthMiddleware;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassController;
@@ -38,7 +40,7 @@ Route::prefix('teacher')->group(function () {
     Route::get('/get', [TeacherController::class, "get_teachers"]);
     Route::post('/block', [TeacherController::class, "block_or_unblock_teacher"]);
     Route::post('/delete', [TeacherController::class, "delete_teacher"]);
-    Route::get('/get-teacher-course', [TeacherController::class, "get_teacher_course"]);
+    Route::get('/get-teacher-course', [TeacherController::class, "get_teacher_course"])->middleware([TeacherAuthMiddleware::class]);
 });
 
 
@@ -52,8 +54,10 @@ Route::prefix('class-time')->group(function () {
 
 // class routes
 Route::prefix('class')->group(function () {
-    Route::post('/create', [ClassController::class, "create_class"]);
-    Route::get('/get', [ClassController::class, "get_teacher_classes"]);
+    Route::post('/create', [ClassController::class, "create_class"])->middleware([TeacherAuthMiddleware::class]);
+    Route::get('/get', [ClassController::class, "get_teacher_classes"])->middleware([TeacherAuthMiddleware::class]);
+    Route::get('/{classId}/students', [ClassController::class, "get_class_students"]);
+
     // Route::get('/get-all', [ClassController::class, "get_all"]);
     // Route::get('/get/single-class-data/{classID}', [ClassController::class, "get_single_class_data"]);
     // Route::get('/get/{courseID}', [ClassController::class, "get_class"]);
@@ -74,6 +78,7 @@ Route::prefix('student-policy')->group(function () {
 Route::prefix('event')->group(function () {
     Route::post('/create-event', [EventController::class, 'create_or_updateEvent']);
     Route::get('/get', [EventController::class, 'get_events']);
+    Route::get('/get-event-members/{eventId}', [EventController::class, 'get_event_members']);
 });
 
 // student routes
@@ -96,8 +101,13 @@ Route::prefix('student')->group(function () {
 Route::prefix('teacher-allotment')->group(function () {
     Route::post('/allot', [TeacherAllotmentController::class, 'allot_teacher']);
     Route::get('/get', [TeacherAllotmentController::class, 'get_allotment']);
-    Route::get('/get-teacher-allotment', [TeacherAllotmentController::class, 'get_teacher_allotment']);
-
+    Route::get('/get-teacher-allotment', [TeacherAllotmentController::class, 'get_teacher_allotment'])->middleware([TeacherAuthMiddleware::class]);
 });
 
 
+
+// attendence routes
+Route::prefix('attendence')->group(function () {
+    Route::post('/add-edit/{attendenceID}', [AttendenceController::class, 'add_edit_attendence'])->middleware([TeacherAuthMiddleware::class]);
+    Route::get('/get/{classId}', [AttendenceController::class, 'get_attendence'])->middleware([TeacherAuthMiddleware::class]);
+});

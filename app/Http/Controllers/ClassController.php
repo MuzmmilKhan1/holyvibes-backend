@@ -24,24 +24,7 @@ class ClassController extends Controller
             'classTime.from' => 'required|date_format:H:i',
             'classTime.to' => 'required|date_format:H:i',
         ]);
-
-        $token = $request->header('token');
-        if (!$token) {
-            return response()->json(['error' => 'Token not provided'], 401);
-        }
-
-        try {
-            $payload = JWTAuth::setToken($token)->getPayload();
-            $userId = $payload->get('sub');
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Invalid token'], 401);
-        }
-
-        $user = User::find($userId);
-        if (!$user || !$user->teacher_id) {
-            return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
-        }
-
+        $user = $request->get('user');
         $teacherId = $user->teacher_id;
         $courseId = $validatedData['courseId'];
 
@@ -100,30 +83,13 @@ class ClassController extends Controller
 
     public function get_teacher_classes(Request $request)
     {
-
-        $token = $request->header('token');
-        if (!$token) {
-            return response()->json(['error' => 'Token not provided'], 401);
-        }
-        try {
-            $payload = JWTAuth::setToken($token)->getPayload();
-            $userId = $payload->get('sub');
-
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Invalid token'], 401);
-        }
-
-        $user = User::find($userId);
-        if (!$user || !$user->teacher_id) {
-            return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
-        }
+        $user = $request->get('user');
         $teacherId = $user->teacher_id;
-
-        $classes = ClassModel::with(['course:id,name','teacherClassTimings'])
+        $classes = ClassModel::with(['course:id,name', 'teacherClassTimings'])
             ->where('teacherID', $teacherId)
-            ->get(['id', 'title', 'classLink', 'courseID', 'teacherID']); 
-        
-            return response()->json([
+            ->get(['id', 'title', 'classLink', 'courseID', 'teacherID']);
+
+        return response()->json([
             'message' => 'Classes found successfully!',
             'data' => $classes,
         ], 201);
@@ -289,6 +255,25 @@ class ClassController extends Controller
             return response()->json([
                 'error' => 'An error occurred: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function get_class_students($classId)
+    {
+        try {
+            $classStds = StudentClassTimings::with(['student'])->where('classID', $classId)->get()->pluck('student')
+                ->filter();
+            if (!$classStds) {
+                return response()->json([
+                    'message' => 'Class students not found!',
+                ], 404);
+            }
+            return response()->json([
+                'message' => 'Class students fetched successfully!',
+                'students' => $classStds,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
         }
     }
 

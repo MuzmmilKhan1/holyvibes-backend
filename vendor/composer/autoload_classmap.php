@@ -7,6 +7,7 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'App\\Console\\Commands\\DropAllTables' => $baseDir . '/app/Console/Commands/DropAllTables.php',
+    'App\\Http\\Controllers\\AttendenceController' => $baseDir . '/app/Http/Controllers/AttendenceController.php',
     'App\\Http\\Controllers\\AuthController' => $baseDir . '/app/Http/Controllers/AuthController.php',
     'App\\Http\\Controllers\\BillingController' => $baseDir . '/app/Http/Controllers/BillingController.php',
     'App\\Http\\Controllers\\ClassController' => $baseDir . '/app/Http/Controllers/ClassController.php',
@@ -18,7 +19,8 @@ return array(
     'App\\Http\\Controllers\\TeacherAllotmentController' => $baseDir . '/app/Http/Controllers/TeacherAllotmentController.php',
     'App\\Http\\Controllers\\TeacherClassTimingsController' => $baseDir . '/app/Http/Controllers/TeacherClassTimingsController.php',
     'App\\Http\\Controllers\\TeacherController' => $baseDir . '/app/Http/Controllers/TeacherController.php',
-    'App\\Http\\Middleware\\DecodeJwtToken' => $baseDir . '/app/Http/Middleware/DecodeJwtToken.php',
+    'App\\Http\\Middleware\\TeacherAuthMiddleware' => $baseDir . '/app/Http/Middleware/TeacherAuthMiddleware.php',
+    'App\\Models\\Attendence' => $baseDir . '/app/Models/Attendence.php',
     'App\\Models\\Billing' => $baseDir . '/app/Models/Billing.php',
     'App\\Models\\ClassModel' => $baseDir . '/app/Models/ClassModel.php',
     'App\\Models\\Course' => $baseDir . '/app/Models/Course.php',
@@ -26,6 +28,7 @@ return array(
     'App\\Models\\CourseTeacher' => $baseDir . '/app/Models/CourseTeacher.php',
     'App\\Models\\Enrollment' => $baseDir . '/app/Models/Enrollment.php',
     'App\\Models\\Event' => $baseDir . '/app/Models/Event.php',
+    'App\\Models\\EventParticipant' => $baseDir . '/app/Models/EventParticipant.php',
     'App\\Models\\Student' => $baseDir . '/app/Models/Student.php',
     'App\\Models\\StudentClassTimings' => $baseDir . '/app/Models/StudentClassTimings.php',
     'App\\Models\\StudentPolicy' => $baseDir . '/app/Models/StudentPolicy.php',

@@ -538,6 +538,7 @@ class ComposerStaticInit332804584eb996ada7dc2391d060a493
 
     public static $classMap = array (
         'App\\Console\\Commands\\DropAllTables' => __DIR__ . '/../..' . '/app/Console/Commands/DropAllTables.php',
+        'App\\Http\\Controllers\\AttendenceController' => __DIR__ . '/../..' . '/app/Http/Controllers/AttendenceController.php',
         'App\\Http\\Controllers\\AuthController' => __DIR__ . '/../..' . '/app/Http/Controllers/AuthController.php',
         'App\\Http\\Controllers\\BillingController' => __DIR__ . '/../..' . '/app/Http/Controllers/BillingController.php',
         'App\\Http\\Controllers\\ClassController' => __DIR__ . '/../..' . '/app/Http/Controllers/ClassController.php',
@@ -549,7 +550,8 @@ class ComposerStaticInit332804584eb996ada7dc2391d060a493
         'App\\Http\\Controllers\\TeacherAllotmentController' => __DIR__ . '/../..' . '/app/Http/Controllers/TeacherAllotmentController.php',
         'App\\Http\\Controllers\\TeacherClassTimingsController' => __DIR__ . '/../..' . '/app/Http/Controllers/TeacherClassTimingsController.php',
         'App\\Http\\Controllers\\TeacherController' => __DIR__ . '/../..' . '/app/Http/Controllers/TeacherController.php',
-        'App\\Http\\Middleware\\DecodeJwtToken' => __DIR__ . '/../..' . '/app/Http/Middleware/DecodeJwtToken.php',
+        'App\\Http\\Middleware\\TeacherAuthMiddleware' => __DIR__ . '/../..' . '/app/Http/Middleware/TeacherAuthMiddleware.php',
+        'App\\Models\\Attendence' => __DIR__ . '/../..' . '/app/Models/Attendence.php',
         'App\\Models\\Billing' => __DIR__ . '/../..' . '/app/Models/Billing.php',
         'App\\Models\\ClassModel' => __DIR__ . '/../..' . '/app/Models/ClassModel.php',
         'App\\Models\\Course' => __DIR__ . '/../..' . '/app/Models/Course.php',
@@ -557,6 +559,7 @@ class ComposerStaticInit332804584eb996ada7dc2391d060a493
         'App\\Models\\CourseTeacher' => __DIR__ . '/../..' . '/app/Models/CourseTeacher.php',
         'App\\Models\\Enrollment' => __DIR__ . '/../..' . '/app/Models/Enrollment.php',
         'App\\Models\\Event' => __DIR__ . '/../..' . '/app/Models/Event.php',
+        'App\\Models\\EventParticipant' => __DIR__ . '/../..' . '/app/Models/EventParticipant.php',
         'App\\Models\\Student' => __DIR__ . '/../..' . '/app/Models/Student.php',
         'App\\Models\\StudentClassTimings' => __DIR__ . '/../..' . '/app/Models/StudentClassTimings.php',
         'App\\Models\\StudentPolicy' => __DIR__ . '/../..' . '/app/Models/StudentPolicy.php',

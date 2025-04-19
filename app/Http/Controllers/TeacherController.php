@@ -146,17 +146,7 @@ class TeacherController extends Controller
 
     public function get_teacher_course(Request $request)
     {
-        $token = $request->header('token');
-        if (!$token) {
-            return response()->json(['error' => 'Token not provided'], 401);
-        }
-        try {
-            $payload = JWTAuth::setToken($token)->getPayload();
-            $userId = $payload->get('sub');
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Invalid token'], 401);
-        }
-        $user = User::find($userId);
+        $user = $request->get('user');
         $courses = CourseTeacher::with('course')->where('teacherID', $user->teacher_id)->get();
         return response()->json([
             'message' => 'Course found successfully.',
