@@ -262,16 +262,16 @@ class StudentController extends Controller
         }
     }
 
-    public function get_allocated_class_course($studentID)
-    {
-        try {
-            $data = Enrollment::with(['class.classTimings', 'course'])->where('studentId', $studentID)->get();
-            return response()->json($data, 200);
+    // public function get_allocated_class_course($studentID)
+    // {
+    //     try {
+    //         $data = Enrollment::with(['class.classTimings', 'course'])->where('studentId', $studentID)->get();
+    //         return response()->json($data, 200);
 
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Something went wrong: ' . $e->getMessage()], 500);
-        }
-    }
+    //     } catch (\Exception $e) {
+    //         return response()->json(['error' => 'Something went wrong: ' . $e->getMessage()], 500);
+    //     }
+    // }
 
 
 }

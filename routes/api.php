@@ -12,6 +12,7 @@ use App\Http\Controllers\CourseContoller;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentPolicyController;
+use App\Http\Middleware\StudentAuthMiddleware;
 
 Route::get('/ping', function () {
     return 'pong';
@@ -57,7 +58,6 @@ Route::prefix('class')->group(function () {
     Route::post('/create', [ClassController::class, "create_class"])->middleware([TeacherAuthMiddleware::class]);
     Route::get('/get', [ClassController::class, "get_teacher_classes"])->middleware([TeacherAuthMiddleware::class]);
     Route::get('/{classId}/students', [ClassController::class, "get_class_students"]);
-
     // Route::get('/get-all', [ClassController::class, "get_all"]);
     // Route::get('/get/single-class-data/{classID}', [ClassController::class, "get_single_class_data"]);
     // Route::get('/get/{courseID}', [ClassController::class, "get_class"]);
@@ -79,6 +79,12 @@ Route::prefix('event')->group(function () {
     Route::post('/create-event', [EventController::class, 'create_or_updateEvent']);
     Route::get('/get', [EventController::class, 'get_events']);
     Route::get('/get-event-members/{eventId}', [EventController::class, 'get_event_members']);
+    Route::get('/get-std-events', [EventController::class, 'get_std_events'])->middleware([StudentAuthMiddleware::class]);
+    Route::post('/event-payment', [EventController::class, 'event_payment'])->middleware([StudentAuthMiddleware::class]);
+    Route::get('/get-std-event-billing/{studentID}/{eventId}', [EventController::class, 'get_std_event_billing']);
+    Route::put('/update-payemnt-status', [EventController::class, 'update_payemnt_status']);
+    Route::get('/join-cancel-membership/{eventID}/{studentID}', [EventController::class, 'join_cancel_membership']);
+    
 });
 
 // student routes
@@ -90,8 +96,6 @@ Route::prefix('student')->group(function () {
     Route::post('/assign_login_credentials', [StudentController::class, "assign_login_credentials"]);
     Route::get('/get-std-courses', [StudentController::class, 'get_std_courses']);
     Route::get('/get-course-classes/{courseID}', [StudentController::class, 'get_std_courses_classes']);
-
-
     // Route::post('/get/requested-class-course', [StudentController::class, "get_std_class_course_data"]);
     // Route::get('/get/allocated-class-course/{studentID}', [StudentController::class, "get_allocated_class_course"]);
 });
@@ -103,7 +107,6 @@ Route::prefix('teacher-allotment')->group(function () {
     Route::get('/get', [TeacherAllotmentController::class, 'get_allotment']);
     Route::get('/get-teacher-allotment', [TeacherAllotmentController::class, 'get_teacher_allotment'])->middleware([TeacherAuthMiddleware::class]);
 });
-
 
 
 // attendence routes
