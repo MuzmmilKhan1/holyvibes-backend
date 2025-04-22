@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Course;
+use App\Models\CourseTeacher;
+use App\Models\Outline;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -57,6 +59,111 @@ class CourseContoller extends Controller
         ], 201);
     }
 
+    public function outlines($courseID)
+    {
+        if (!$courseID) {
+            return response()->json([
+                'message' => 'Course ID is required!',
+            ], 400);
+        }
+        $courseOutlines = Outline::where('courseID', $courseID)->get();
+        if ($courseOutlines->isEmpty()) {
+            return response()->json([
+                'message' => 'No outlines found for this course.',
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Course outlines retrieved successfully!',
+            'outlines' => $courseOutlines,
+        ], 200);
+    }
+
+
+    public function add_outlines(Request $request, $courseID, $outlineID)
+    {
+        $validatedData = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+        ]);
+        if ((int) $outlineID === 0) {
+            $outline = Outline::create([
+                'courseID' => $courseID,
+                'title' => $validatedData['title'],
+                'description' => $validatedData['description'],
+            ]);
+            return response()->json([
+                'message' => 'Course outline added successfully!',
+                'course' => $outline,
+            ], 201);
+        } else {
+            $outline = Outline::find($outlineID);
+            if (!$outline) {
+                return response()->json(['message' => 'Outline not found'], 404);
+            }
+            $outline->update([
+                'title' => $validatedData['title'],
+                'description' => $validatedData['description'],
+            ]);
+            return response()->json([
+                'message' => 'Course outline updated successfully!',
+                'course' => $outline,
+            ], 200);
+        }
+    }
+
+    public function delete_outlines($outlineId)
+    {
+        $outline = Outline::find($outlineId);
+
+        if (!$outline) {
+            return response()->json([
+                'message' => 'Outline not found',
+            ], 404);
+        }
+
+        $outline->delete();
+
+        return response()->json([
+            'message' => 'Course outline deleted successfully!',
+        ], 200);
+    }
+
+    public function assign_course(Request $request)
+    {
+        $validatedData = $request->validate([
+            'teacherID' => 'required|integer|exists:teachers,id',
+            'courseID' => 'required|integer|exists:courses,id',
+        ]);
+        $existing = CourseTeacher::where('teacherID', $validatedData['teacherID'])
+            ->where('courseID', $validatedData['courseID'])
+            ->first();
+        if ($existing) {
+            return response()->json([
+                'message' => 'This course is already assigned to the teacher.',
+            ], 409);
+        }
+        CourseTeacher::create([
+            'teacherID' => $validatedData['teacherID'],
+            'courseID' => $validatedData['courseID'],
+        ]);
+        return response()->json([
+            'message' => 'Course assigned to teacher successfully.',
+        ], 200);
+    }
+
+    public function get_teacher_course($teacherID)
+    {
+        $courses = CourseTeacher::with('course', )
+            ->where('teacherID', $teacherID)
+            ->get();
+        return response()->json([
+            'message' => 'Courses fetched successfully',
+            'courses' => $courses,
+        ], 200);
+    }
+
+
     public function get_teacher_courses_time(Request $request)
     {
         try {
@@ -84,6 +191,6 @@ class CourseContoller extends Controller
         }
     }
 
-    
+
 
 }

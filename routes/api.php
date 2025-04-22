@@ -11,6 +11,7 @@ use App\Http\Controllers\ClassController;
 use App\Http\Controllers\CourseContoller;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentPerformanceController;
 use App\Http\Controllers\StudentPolicyController;
 use App\Http\Middleware\StudentAuthMiddleware;
 
@@ -31,6 +32,12 @@ Route::prefix('auth')->group(function () {
 Route::prefix('course')->group(function () {
     Route::post('/create-course', [CourseContoller::class, "create_course"]);
     Route::get('/get', [CourseContoller::class, "get"]);
+    Route::get('/outlines/{courseID}', [CourseContoller::class, "outlines"]);
+    Route::post('/add-outlines/{courseID}/{outlineID}', [CourseContoller::class, "add_outlines"]);
+    Route::delete('/delete-outline/{outlineId}', [CourseContoller::class, "delete_outlines"]);
+    Route::post('/assign-course', [CourseContoller::class, "assign_course"]);
+    Route::get('/get-teacher-assiged-course/{teacherID}', [CourseContoller::class, "get_teacher_course"]);
+
     // Route::get('/get-teacher-courses-time', [CourseContoller::class, "get_teacher_courses_time"]);
 });
 
@@ -42,6 +49,7 @@ Route::prefix('teacher')->group(function () {
     Route::post('/block', [TeacherController::class, "block_or_unblock_teacher"]);
     Route::post('/delete', [TeacherController::class, "delete_teacher"]);
     Route::get('/get-teacher-course', [TeacherController::class, "get_teacher_course"])->middleware([TeacherAuthMiddleware::class]);
+    Route::get('/get-std-performance', [TeacherController::class, "get_std_performance"])->middleware([TeacherAuthMiddleware::class]);
 });
 
 
@@ -74,7 +82,7 @@ Route::prefix('student-policy')->group(function () {
 
 });
 
-// student event routes
+// event routes
 Route::prefix('event')->group(function () {
     Route::post('/create-event', [EventController::class, 'create_or_updateEvent']);
     Route::get('/get', [EventController::class, 'get_events']);
@@ -96,6 +104,9 @@ Route::prefix('student')->group(function () {
     Route::post('/assign_login_credentials', [StudentController::class, "assign_login_credentials"]);
     Route::get('/get-std-courses', [StudentController::class, 'get_std_courses']);
     Route::get('/get-course-classes/{courseID}', [StudentController::class, 'get_std_courses_classes']);
+    Route::post('/purchase-course', [StudentController::class, 'purchase_course'])->middleware([StudentAuthMiddleware::class]);
+    Route::post('/get-performance/{classID}', [StudentController::class, 'get_performance'])->middleware([StudentAuthMiddleware::class]);
+
     // Route::post('/get/requested-class-course', [StudentController::class, "get_std_class_course_data"]);
     // Route::get('/get/allocated-class-course/{studentID}', [StudentController::class, "get_allocated_class_course"]);
 });
@@ -113,4 +124,12 @@ Route::prefix('teacher-allotment')->group(function () {
 Route::prefix('attendence')->group(function () {
     Route::post('/add-edit/{attendenceID}', [AttendenceController::class, 'add_edit_attendence'])->middleware([TeacherAuthMiddleware::class]);
     Route::get('/get/{classId}', [AttendenceController::class, 'get_attendence'])->middleware([TeacherAuthMiddleware::class]);
+});
+
+
+
+// std performance routes
+Route::prefix('student-performance')->group(function () {
+    Route::post('/add', [StudentPerformanceController::class, 'add_performance'])->middleware([TeacherAuthMiddleware::class]);
+    Route::get('/get', [StudentPerformanceController::class, 'get_performance']);
 });

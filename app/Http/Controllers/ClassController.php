@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ClassCourse;
 use App\Models\ClassModel;
 use App\Models\ClassTimings;
 use App\Models\Course;
@@ -15,60 +16,68 @@ use Illuminate\Support\Facades\DB;
 class ClassController extends Controller
 {
 
+
     public function create_class(Request $request)
     {
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
             'link' => 'required|string|max:255',
-            'courseId' => 'required|integer|exists:courses,id',
+            'courseIds' => 'required|array|min:1',
+            'courseIds.*' => 'required|integer|exists:courses,id',
             'classTime.from' => 'required|date_format:H:i',
-            'classTime.to' => 'required|date_format:H:i',
+            'classTime.to' => 'required|date_format:H:i|after:classTime.from',
         ]);
+
         $user = $request->get('user');
+        if (!$user || !$user->teacher_id) {
+            return response()->json(['error' => 'Unauthorized or invalid teacher'], 401);
+        }
         $teacherId = $user->teacher_id;
-        $courseId = $validatedData['courseId'];
 
         DB::beginTransaction();
 
         try {
-            // Create the class
             $class = ClassModel::create([
                 'title' => $validatedData['title'],
                 'classLink' => $validatedData['link'],
-                'courseID' => $courseId,
                 'teacherID' => $teacherId,
             ]);
-
-            // Find matching student_class_timings
-            $matchingStudents = StudentClassTimings::where('courseID', $courseId)
+            foreach ($validatedData['courseIds'] as $courseId) {
+                ClassCourse::create([
+                    'classID' => $class->id,
+                    'courseID' => $courseId,
+                ]);
+            }
+            $matchingStudents = StudentClassTimings::whereIn('courseID', $validatedData['courseIds'])
                 ->where('preferred_time_from', $validatedData['classTime']['from'])
                 ->where('preferred_time_to', $validatedData['classTime']['to'])
-                ->whereHas('teacherAllotment', function ($query) use ($teacherId, $courseId) {
+                ->whereHas('teacherAllotment', function ($query) use ($teacherId, $validatedData) {
                     $query->where('teacherID', $teacherId)
-                        ->where('courseID', $courseId);
+                        ->whereIn('courseID', $validatedData['courseIds']);
                 })
                 ->get();
-
-            // Update classID for each matched student
+            $updatedCount = 0;
             foreach ($matchingStudents as $studentTiming) {
-                $studentTiming->classID = $class->id;
-                $studentTiming->save();
+                $studentTiming->update([
+                    'classID' => $class->id,
+                ]);
+                $updatedCount++;
             }
-
-            TeacherClassTimings::create([
-                'classID' => $class->id,
-                'taecherID' => $teacherId,
-                'courseID' => $courseId,
-                'preferred_time_from' => $validatedData['classTime']['from'],
-                'preferred_time_to' => $validatedData['classTime']['to'],
-            ]);
-
+            foreach ($validatedData['courseIds'] as $courseId) {
+                TeacherClassTimings::create([
+                    'classID' => $class->id,
+                    'teacherID' => $teacherId, // Fixed typo: taecherID -> teacherID
+                    'courseID' => $courseId,
+                    'preferred_time_from' => $validatedData['classTime']['from'],
+                    'preferred_time_to' => $validatedData['classTime']['to'],
+                ]);
+            }
             DB::commit();
-
             return response()->json([
                 'message' => 'Class created and students updated successfully!',
                 'classId' => $class->id,
-                'updatedStudentsCount' => $matchingStudents->count(),
+                'updatedStudentsCount' => $updatedCount,
+                'assignedCoursesCount' => count($validatedData['courseIds']),
             ], 201);
 
         } catch (\Exception $e) {
@@ -76,23 +85,72 @@ class ClassController extends Controller
             return response()->json([
                 'error' => 'Something went wrong.',
                 'details' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTrace() : null,
             ], 500);
         }
     }
-
-
+    
     public function get_teacher_classes(Request $request)
     {
-        $user = $request->get('user');
-        $teacherId = $user->teacher_id;
-        $classes = ClassModel::with(['course:id,name', 'teacherClassTimings'])
+        try {
+            $user = $request->get('user');
+            if (!$user || !$user->teacher_id) {
+                return response()->json([
+                    'message' => 'Unauthorized or invalid teacher',
+                ], 401);
+            }
+            $teacherId = $user->teacher_id;
+            $classes = ClassModel::with([
+                'courses' => function ($query) {
+                    $query->select('courses.id', 'courses.name'); 
+                },
+                'teacherClassTimings' => function ($query) {
+                    $query->select(
+                        'teacher_class_timings.id',
+                        'teacher_class_timings.classID',
+                        'teacher_class_timings.courseID',
+                        'teacher_class_timings.preferred_time_from',
+                        'teacher_class_timings.preferred_time_to'
+                    );
+                }
+            ])
             ->where('teacherID', $teacherId)
-            ->get(['id', 'title', 'classLink', 'courseID', 'teacherID']);
-
-        return response()->json([
-            'message' => 'Classes found successfully!',
-            'data' => $classes,
-        ], 201);
+            ->select('id', 'title', 'classLink', 'teacherID') 
+            ->get();
+            $classes = $classes->map(function ($class) {
+                return [
+                    'id' => $class->id,
+                    'title' => $class->title,
+                    'classLink' => $class->classLink,
+                    'teacherID' => $class->teacherID,
+                    'courses' => $class->courses->map(function ($course) {
+                        return [
+                            'id' => $course->id,
+                            'name' => $course->name,
+                        ];
+                    }),
+                    'timings' => $class->teacherClassTimings->map(function ($timing) {
+                        return [
+                            'id' => $timing->id,
+                            'courseID' => $timing->courseID,
+                            'from' => $timing->preferred_time_from,
+                            'to' => $timing->preferred_time_to,
+                        ];
+                    }),
+                ];
+            });
+            return response()->json([
+                'message' => 'Classes found successfully!',
+                'data' => $classes,
+            ], 200);
+    
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while fetching classes',
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTrace() : null,
+            ], 500);
+        }
     }
 
     public function get_all()

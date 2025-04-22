@@ -25,7 +25,6 @@ class AttendenceController extends Controller
             if ($isStdAttendenceExists) {
                 return response()->json(['message' => 'Attendence already exists for this student on this date'], 422);
             }
-
             $attendence = new Attendence();
             $attendence->classID = $validated['classId'];
             $attendence->studentID = $validated['studentId'];
@@ -36,18 +35,25 @@ class AttendenceController extends Controller
             return response()->json(['message' => 'Attendence recorded successfully'], 201);
         } else {
             $attendence = Attendence::find($attendenceID);
-
             if (!$attendence) {
-                return response()->json(['message' => 'Attendence not found'], 404);
+                return response()->json(['message' => 'Attendance not found'], 404);
             }
-
+            $existing = Attendence::where('studentID', $validated['studentId'])
+                ->where('date', $validated['date'])
+                ->where('id', '!=', $attendenceID)
+                ->first();
+            if ($existing) {
+                return response()->json([
+                    'message' => 'An attendance record already exists for this student on the same date.',
+                ], 409);
+            }
             $attendence->classID = $validated['classId'];
             $attendence->studentID = $validated['studentId'];
             $attendence->date = $validated['date'];
             $attendence->status = $validated['status'];
             $attendence->save();
+            return response()->json(['message' => 'Attendance updated successfully'], 200);
 
-            return response()->json(['message' => 'Attendence updated successfully'], 200);
         }
     }
 

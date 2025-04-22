@@ -30,6 +30,7 @@ return array(
     'App\\Models\\Event' => $baseDir . '/app/Models/Event.php',
     'App\\Models\\EventBilling' => $baseDir . '/app/Models/EventBilling.php',
     'App\\Models\\EventParticipant' => $baseDir . '/app/Models/EventParticipant.php',
+    'App\\Models\\Outline' => $baseDir . '/app/Models/Outline.php',
     'App\\Models\\Student' => $baseDir . '/app/Models/Student.php',
     'App\\Models\\StudentClassTimings' => $baseDir . '/app/Models/StudentClassTimings.php',
     'App\\Models\\StudentPolicy' => $baseDir . '/app/Models/StudentPolicy.php',

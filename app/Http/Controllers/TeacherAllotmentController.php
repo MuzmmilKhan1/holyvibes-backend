@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CourseTeacher;
 use App\Models\StudentClassTimings;
 use App\Models\TeacherAllotment;
 use App\Models\User;
@@ -24,6 +25,14 @@ class TeacherAllotmentController extends Controller
         ]);
         DB::beginTransaction();
         try {
+            $isCourseAssign = CourseTeacher::where('teacherID', $validated['teacherId'])
+                ->where('courseID', $validated['courseId'])
+                ->first();
+            if (!$isCourseAssign) {
+                return response()->json([
+                    'error' => 'Teacher is not assigned to this course.'
+                ], 400);
+            }
             $existingAllotment = TeacherAllotment::where('teacherID', $validated['teacherId'])
                 ->where('studentID', $validated['studentId'])
                 ->where('courseID', $validated['courseId'])

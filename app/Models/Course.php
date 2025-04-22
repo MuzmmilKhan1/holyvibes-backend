@@ -23,11 +23,10 @@ class Course extends Model
     }
     public function classTimings()
     {
-        return $this->hasMany(ClassTimings::class,foreignKey:'courseID');
+        return $this->hasMany(StudentClassTimings::class,foreignKey:'courseID');
     }
-
-    public function enrollment()
+    public function outline()
     {
-        return $this->hasMany(Enrollment::class, 'classID');
+        return $this->hasMany(Outline::class, 'courseID');
     }
 }

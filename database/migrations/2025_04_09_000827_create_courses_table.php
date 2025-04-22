@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('course_duration');
             $table->timestamps();
         });
-        
     }
 
     public function down(): void

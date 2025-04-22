@@ -30,10 +30,6 @@ class Student extends Model
         return $this->hasMany(CourseEnrollment::class, 'studentId');
     }
 
-    public function classEnrollments()
-    {
-        return $this->hasMany(Enrollment::class, 'studentId');
-    }
     public function billing()
     {
         return $this->hasMany(Billing::class, 'studentID');

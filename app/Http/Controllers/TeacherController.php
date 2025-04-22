@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\ClassTimings;
 use App\Models\Course;
 use App\Models\CourseTeacher;
+use App\Models\StudentPerformance;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class TeacherController extends Controller
@@ -71,57 +73,66 @@ class TeacherController extends Controller
 
     public function assign_login_credentials(Request $request)
     {
-        $validatedData = $request->validate([
-            'teacherID' => 'required|integer',
-            'name' => 'required|string',
-            'email' => 'required|string|email',
-            'password' => 'required|string|min:6',
-            'courseIds' => 'required|array',
-            'courseIds.*.course_id' => 'required|integer|exists:courses,id',
-            'courseIds.*.course_name' => 'required|string',
-            'courseIds.*.from' => 'required|date_format:H:i',
-            'courseIds.*.to' => 'required|date_format:H:i',
-        ]);
-
-
-        // Find teacher
-        $teacher = Teacher::find($validatedData['teacherID']);
-        if (!$teacher) {
-            return response()->json([
-                'message' => 'Teacher not found',
-            ], 404);
-        }
-
-        // Update teacher info
-        $teacher->update([
-            'teach_id' => $validatedData['teacherID'],
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'status' => 'allowed',
-        ]);
-
-        // Create user account
-        $user = User::create([
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'password' => Hash::make($validatedData['password']),
-            'role' => 'teacher',
-            'teacher_id' => $teacher->id,
-        ]);
-
-        // Assign teacher to courses
-        foreach ($validatedData['courseIds'] as $course) {
-            CourseTeacher::firstOrCreate([
-                'teacherID' => $teacher->id,
-                'courseID' => $course['course_id'],
+        try {
+            $validatedData = $request->validate([
+                'id' => 'required|integer', 
+                'teacherID' => 'required|integer|exists:teachers,id',
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|',
+                'password' => 'required|string|min:6',
+                'isEdit' => 'required|boolean',
             ]);
+            $teacher = Teacher::findOrFail($validatedData['teacherID']); 
+            $teacher->update([
+                'name' => $validatedData['name'],
+                'email' => $validatedData['email'],
+                'teach_id' => $validatedData['id'], 
+                'status' => 'allowed',
+            ]);
+
+            if ($validatedData['isEdit'] === true) {
+                $user = User::where('teacher_id', $teacher->id)->first();
+                if ($user) {
+                    $user->update([
+                        'name' => $validatedData['name'],
+                        'email' => $validatedData['email'],
+                        'password' => Hash::make($validatedData['password']),
+                    ]);
+                } else {
+                    return response()->json([
+                        'message' => "User not found"
+                    ], 200);
+                }
+            } else {
+                $user = User::create([
+                    'name' => $validatedData['name'],
+                    'email' => $validatedData['email'],
+                    'password' => Hash::make($validatedData['password']),
+                    'role' => 'teacher',
+                    'teacher_id' => $teacher->id,
+                ]);
+            }
+            return response()->json([
+                'message' => $validatedData['isEdit']
+                    ? 'Login credentials updated successfully'
+                    : 'Login credentials assigned successfully',
+                'teacher_id' => $teacher->id,
+                'user_id' => $user->id,
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while processing your request',
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTrace() : null, // Only show trace in debug mode
+            ], 500);
         }
-
-        return response()->json([
-            'message' => 'Login credentials assigned successfully.',
-        ], 200);
     }
-
 
     public function delete_teacher(Request $request)
     {
@@ -154,6 +165,27 @@ class TeacherController extends Controller
         ], 200);
     }
 
+    public function get_std_performance(Request $request)
+    {
+        $teacherID = $request->get('user')->teacher_id;
+    
+        $studentPerformance = StudentPerformance::with(['student', 'course','class'])
+            ->where('teacherID', $teacherID)
+            ->get();
+    
+        if ($studentPerformance->isEmpty()) {
+            return response()->json([
+                'message' => 'No student performance records found for this teacher.',
+                'data' => [],
+            ], 404);
+        }
+    
+        return response()->json([
+            'message' => 'Student performance data fetched successfully.',
+            'data' => $studentPerformance,
+        ], 200);
+    }
+    
 
     public function block_or_unblock_teacher(Request $request)
     {

@@ -10,6 +10,7 @@ use App\Models\ClassTimings;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\StudentClassTimings;
+use App\Models\StudentPerformance;
 use App\Models\TeacherAllotment;
 use App\Models\TeacherClassTimings;
 use App\Models\User;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\File;
 
 class StudentController extends Controller
 {
@@ -226,7 +228,9 @@ class StudentController extends Controller
             return response()->json(['error' => 'Unauthorized or invalid student'], 403);
         }
         $studentID = $user->student_id;
-        $classes = StudentClassTimings::with(['class','course'])->whereNotNull('classID')
+        $classes = StudentClassTimings::with(['class', 'course'])->whereNotNull('classID')
+            ->where('classID', '!=', '')
+            ->where('classID', '>', 0)
             ->where('courseID', $courseID)
             ->where('studentID', $studentID)
             ->get();
@@ -272,6 +276,79 @@ class StudentController extends Controller
     //         return response()->json(['error' => 'Something went wrong: ' . $e->getMessage()], 500);
     //     }
     // }
+
+
+    public function purchase_course(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'courseID' => 'required|integer|exists:courses,id',
+            'paymentMethod' => 'required|string|in:bank transfer,jazzcash',
+            'receipt' => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'classTimings' => 'required|array|min:1',
+            'classTimings.*.from' => 'required|date_format:H:i',
+            'classTimings.*.to' => 'required|date_format:H:i|after:classTimings.*.from',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'errors' => $validator->errors()
+            ], 422);
+        }
+        $course = Course::find($request->courseID);
+        $studentID = $request->get('user')->student_id;
+        $paymentMethod = $request->paymentMethod;
+        $classTimings = $request->classTimings;
+        $file = $request->file('receipt');
+        $fileContents = File::get($file->getRealPath());
+        $base64Receipt = base64_encode($fileContents);
+        $mime = $file->getClientMimeType();
+        $base64Receipt = "data:{$mime};base64," . $base64Receipt;
+        $billing = new Billing();
+        $billing->studentID = $studentID;
+        $billing->courseID = $course->id;
+        $billing->paymentMethod = $paymentMethod;
+        $billing->receipt = $base64Receipt;
+        $billing->paymentStatus = 'paid';
+        $billing->save();
+        $student = Student::find($studentID);
+        $classCourseData = $student->class_course_data ? json_decode($student->class_course_data, true) : [];
+        $newCourseData = [
+            'timings' => $classTimings,
+            'course_id' => (string) $course->id,
+            'course_name' => $course->name,
+        ];
+        $classCourseData[] = $newCourseData;
+        $student->class_course_data = json_encode($classCourseData);
+        $student->save();
+        return response()->json([
+            'message' => 'Billing details have been sent to the admin. Admin will allot the classes soon.',
+            'billing_id' => $billing->id
+        ]);
+    }
+
+
+    public function get_performance(Request $request, $classID)
+    {
+        $studentID = $request->get('user')->std_id;
+
+        $performance = StudentPerformance::with(['course', 'teacher', 'student'])
+            ->where('classID', $classID)
+            ->where('studentID', $studentID)
+            ->first();
+
+        if (!$performance) {
+            return response()->json([
+                'message' => 'No performance record found for this class and student.',
+                'data' => null,
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Student performance fetched successfully.',
+            'data' => $performance,
+        ], 200);
+    }
+
 
 
 }

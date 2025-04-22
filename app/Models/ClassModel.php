@@ -8,9 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class ClassModel extends Model
 {
     use HasFactory;
+
     protected $table = 'classes';
+    
     protected $fillable = [
-        'courseID',
         'teacherID',
         'title',
         'description',
@@ -18,14 +19,18 @@ class ClassModel extends Model
         'total_seats',
         'filled_seats',
     ];
-    public function course()
+
+    public function courses()
     {
-        return $this->belongsTo(Course::class, 'courseID');
+        return $this->belongsToMany(Course::class, 'class_course', 'classID', 'courseID')
+                    ->withTimestamps();
     }
+
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacherID');
     }
+
     public function studentClassTimings()
     {
         return $this->hasMany(StudentClassTimings::class, 'classID');
@@ -35,10 +40,4 @@ class ClassModel extends Model
     {
         return $this->hasMany(TeacherClassTimings::class, 'classID');
     }
-    public function enrollment()
-    {
-        return $this->hasMany(Enrollment::class, 'classID');
-    }
-
-
 }

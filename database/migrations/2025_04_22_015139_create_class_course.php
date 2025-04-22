@@ -5,18 +5,20 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
+
     public function up(): void
     {
-        Schema::create('classes', function (Blueprint $table) {
+        Schema::create('class_course', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacherID')->constrained('teachers')->onDelete('cascade');
-            $table->string('title');
-            $table->string('classLink')->nullable();
+            $table->foreignId('classID')->constrained('classes')->onDelete('cascade');
+            $table->foreignId('courseID')->constrained('courses')->onDelete('cascade');
             $table->timestamps();
         });
+
     }
+
     public function down(): void
     {
-        Schema::dropIfExists('classes');
+        Schema::dropIfExists('class_course');
     }
 };
