@@ -30,6 +30,12 @@ class StudentClassTimings extends Model
     {
         return $this->belongsTo(ClassModel::class, 'classID');
     }
+
+    public function teacherClassTimings()
+    {
+        return $this->belongsTo(ClassModel::class, 'classID');
+    }
+
     public function teacherAllotment()
     {
         return $this->belongsTo(TeacherAllotment::class, 'allotmentID');

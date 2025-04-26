@@ -70,4 +70,18 @@ class AttendenceController extends Controller
 
     }
 
+    public function delete_attendence($attendenceID)
+    {
+        $attendence = Attendence::find($attendenceID);
+        if (!$attendence) {
+            return response()->json([
+                'message' => 'Attendance not found!',
+            ], 404);
+        }
+        $attendence->delete();
+        return response()->json([
+            'message' => 'Attendance deleted successfully!',
+        ], 200);
+    }
+
 }

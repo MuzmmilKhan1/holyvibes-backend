@@ -7,9 +7,11 @@ use App\Models\ClassModel;
 use App\Models\ClassTimings;
 use App\Models\Course;
 use App\Models\StudentClassTimings;
+use App\Models\TeacherAllotment;
 use App\Models\TeacherClassTimings;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 
@@ -89,7 +91,7 @@ class ClassController extends Controller
             ], 500);
         }
     }
-    
+
     public function get_teacher_classes(Request $request)
     {
         try {
@@ -102,7 +104,7 @@ class ClassController extends Controller
             $teacherId = $user->teacher_id;
             $classes = ClassModel::with([
                 'courses' => function ($query) {
-                    $query->select('courses.id', 'courses.name'); 
+                    $query->select('courses.id', 'courses.name');
                 },
                 'teacherClassTimings' => function ($query) {
                     $query->select(
@@ -114,9 +116,9 @@ class ClassController extends Controller
                     );
                 }
             ])
-            ->where('teacherID', $teacherId)
-            ->select('id', 'title', 'classLink', 'teacherID') 
-            ->get();
+                ->where('teacherID', $teacherId)
+                ->select('id', 'title', 'classLink', 'teacherID')
+                ->get();
             $classes = $classes->map(function ($class) {
                 return [
                     'id' => $class->id,
@@ -143,7 +145,7 @@ class ClassController extends Controller
                 'message' => 'Classes found successfully!',
                 'data' => $classes,
             ], 200);
-    
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'An error occurred while fetching classes',
@@ -155,167 +157,209 @@ class ClassController extends Controller
 
     public function get_all()
     {
-        $classes = ClassModel::all();
+        $classes = ClassModel::with('teacherClassTimings')->get();
         return response()->json([
             'message' => 'Classes found successfully!',
             'data' => $classes,
         ], 201);
     }
 
-    public function get_class($courseID)
+    
+  
+
+
+   
+
+    public function edit_class(Request $request, $classID)
     {
         try {
-            if ($courseID) {
-                $class = ClassModel::where('courseID', $courseID)->get();
-                if (!$class) {
-                    return response()->json([
-                        'message' => 'Class not found!',
-                    ], 404);
-                }
-
-                return response()->json([
-                    'message' => 'Classs fetched successfully!',
-                    'class' => $class,
-                ], 200);
-            } else {
-                return response()->json([
-                    'message' => 'Class ID is required!',
-                ], 400);
-            }
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json(['error' => 'Invalid or expired token'], 401);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public function get_class_time($classID)
-    {
-        try {
-            if ($classID) {
-                $class = TeacherClassTimings::where('classID', $classID)->get();
-                if (!$class) {
-                    return response()->json([
-                        'message' => 'Class timing not found!',
-                    ], 404);
-                }
-                return response()->json([
-                    'message' => 'Class timings fetched successfully!',
-                    'classTime' => $class,
-                ], 200);
-            } else {
-                return response()->json([
-                    'message' => 'Class ID is required!',
-                ], 400);
-            }
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json(['error' => 'Invalid or expired token'], 401);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-        }
-    }
-
-
-    public function get_single_class_data($classID)
-    {
-        try {
-            if ($classID) {
-                $class = ClassModel::with(['classTimings', 'teacher', 'course.classTimings'])->where('id', $classID)->first();
-                if (!$class) {
-                    return response()->json([
-                        'message' => 'Class not found!',
-                    ], 404);
-                }
-                return response()->json([
-                    'message' => 'Class details fetched successfully!',
-                    'class' => $class,
-                ], 200);
-            } else {
-                return response()->json([
-                    'message' => 'Class ID is required!',
-                ], 400);
-            }
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json(['error' => 'Invalid or expired token'], 401);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public function edit_class(Request $request)
-    {
-        try {
-            $request->validate([
-                'id' => 'required',
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'link' => 'required|string|max:255',
+                'classTime' => 'required|array',
+                'classTime.id' => 'required|integer|exists:teacher_class_timings,id',
+                'classTime.from' => 'required|',
+                'classTime.to' => 'required|',
             ]);
-            $class = ClassModel::find($request->id);
+            $class = ClassModel::where('id', $classID)->first();
             if (!$class) {
-                return response()->json([
-                    'message' => 'Class not found!',
-                ], 404);
+                return response()->json(['error' => 'Class not found'], 404);
             }
-            $class->title = $request->title;
-            $class->description = $request->description;
-            $class->classLink = $request->class_link;
-            $class->total_seats = $request->total_seats;
-            $class->filled_seats = $request->filled_seats;
-            $class->save();
+            DB::beginTransaction();
+            try {
+                $class->title = $validated['title'];
+                $class->classLink = $validated['link'];
+                $class->save();
+                $timing = TeacherClassTimings::where('id', $validated['classTime']['id'])->where('classID', $classID)->first();
+                if (!$timing) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Timing record not found'], 404);
+                }
+                $timing->preferred_time_from = $validated['classTime']['from'];
+                $timing->preferred_time_to = $validated['classTime']['to'];
+                $timing->save();
+                // StudentClassTimings::where('classID', $classID)
+                //     ->update([
+                //         'preferred_time_from' => $validated['classTime']['from'],
+                //         'preferred_time_to' => $validated['classTime']['to'],
+                //     ]);
+                DB::commit();
+                return response()->json([
+                    'message' => 'Class updated successfully!',
+                ], 200);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Failed to update class',
+                    'details' => $e->getMessage(),
+                    'trace' => config('app.debug') ? $e->getTrace() : null,
+                ], 500);
+            }
+
+        } catch (JWTException $e) {
             return response()->json([
-                'message' => 'Class updated successfully!',
-                'class' => $class,
-            ], 200);
-
-        } catch (\Tymon\JWTAuth\Exceptions\JWTException $e) {
-            return response()->json(['error' => 'Invalid or expired token'], 401);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
-        }
-    }
-
-    public function edit_by_teacher_class(Request $request)
-    {
-        try {
-            $validatedData = $request->validate([
-                'id' => 'required|integer|exists:classes,id',
-                'description' => 'required|string',
-                'link' => 'required|string|url',
-                'selectedTimingID' => 'required|integer|exists:class_timings,id',
-                'title' => 'required|string',
-            ]);
-            $class = ClassModel::find($validatedData['id']);
-            if (!$class) {
-                return response()->json([
-                    'message' => 'Class not found!',
-                ], 404);
-            }
-            $class->update([
-                'title' => $validatedData['title'],
-                'description' => $validatedData['description'],
-                'classLink' => $validatedData['link'],
-            ]);
-            $classTiming = TeacherClassTimings::find($validatedData['selectedTimingID']);
-            if (!$classTiming) {
-                return response()->json([
-                    'message' => 'Class timing not found!',
-                ], 404);
-            }
-            $classTiming->classID = $class->id;
-            $classTiming->save();
-            return response()->json([
-                'message' => 'Class and timing updated successfully!',
-                'class' => $class->fresh(),
-                'classTiming' => $classTiming,
-            ], 200);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            throw $e;
+                'error' => 'Invalid or expired token',
+                'details' => $e->getMessage(),
+            ], 401);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'An error occurred: ' . $e->getMessage(),
+                'error' => 'An error occurred',
+                'details' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTrace() : null,
             ], 500);
         }
     }
 
+    public function assign_class(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'classId' => 'required|exists:classes,id',
+                'students' => 'required|array|min:1',
+                'students.*.studentId' => 'required|exists:students,id',
+                'students.*.classTimings' => 'required|array|min:1',
+                'students.*.classTimings.*.id' => 'required|exists:student_class_timings,id',
+                'students.*.classTimings.*.preferred_time_from' => 'required|string',
+                'students.*.classTimings.*.preferred_time_to' => 'required|string',
+            ]);
+
+            $updatedCount = 0;
+
+            foreach ($validatedData['students'] as $student) {
+                $studentId = $student['studentId'];
+                $timingIds = array_column($student['classTimings'], 'id');
+
+                $updated = StudentClassTimings::where('studentID', $studentId)
+                    ->whereIn('id', $timingIds)
+                    ->update(['classID' => $validatedData['classId']]);
+
+                $updatedCount += $updated;
+            }
+
+            if ($updatedCount === 0) {
+                return response()->json([
+                    'message' => 'No matching class timings found for the given students or no updates needed'
+                ], 404);
+            }
+
+            return response()->json([
+                'message' => 'Students assigned to class successfully',
+                'updated_count' => $updatedCount
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while assigning students to class',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function get_students(Request $request)
+    {
+        try {
+            $teacherID = $request->get('user')->teacher_id;
+            $classes = ClassModel::where('teacherID', $teacherID)
+                ->pluck('id');
+            $students = StudentClassTimings::with('student', 'class')
+                ->whereIn('classID', $classes)
+                ->get();
+            return response()->json([
+                'message' => 'Students retrieved successfully',
+                'students' => $students
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while retrieving students',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function remove_students($classID, $studentID, $stdClassTimingID)
+    {
+        try {
+            $stdClassTime = StudentClassTimings::where('studentID', $studentID)
+                ->where('classID', $classID)
+                ->where('id', $stdClassTimingID)
+                ->first();
+
+            if (!$stdClassTime) {
+                return response()->json([
+                    'message' => 'Class timing not found for the specified student and class'
+                ], 404);
+            }
+
+            $stdClassTime->classID = null;
+            $stdClassTime->save();
+
+            return response()->json([
+                'message' => 'Student removed from class successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while removing the student from the class',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function delete_class($classID)
+    {
+        try {
+            $class = ClassModel::find($classID);
+            if (!$class) {
+                return response()->json([
+                    'message' => 'Class not found'
+                ], 404);
+            }
+            $updatedCount = StudentClassTimings::where('classID', $classID)
+                ->update(['classID' => null]);
+            $class->delete();
+            return response()->json([
+                'message' => 'Class deleted successfully',
+                'unassigned_timings_count' => $updatedCount
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while deleting the class',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
+   
     public function get_class_students($classId)
     {
         try {

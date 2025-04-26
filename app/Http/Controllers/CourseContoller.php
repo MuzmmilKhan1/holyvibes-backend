@@ -16,28 +16,62 @@ class CourseContoller extends Controller
     public function create_course(Request $request)
     {
         try {
+            // Validate the request data
             $validatedData = $request->validate([
+                'id' => 'required|integer', // Added id validation
                 'name' => 'required|string|max:255',
                 'description' => 'required|string',
                 'price' => 'required|numeric|min:0',
                 'courseDuration' => 'required|string|max:100',
-                'image' => 'required|image|mimes:jpeg,png,jpg|max:5120', // 5MB
+                'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
             ]);
-            $imageFile = $request->file('image');
-            $imageContent = file_get_contents($imageFile->getRealPath());
-            $imageBase64 = base64_encode($imageContent);
-            $mimeType = $imageFile->getMimeType();
-            $course = Course::create([
-                'name' => $validatedData['name'],
-                'description' => $validatedData['description'],
-                'price' => $validatedData['price'],
-                'course_duration' => $validatedData['courseDuration'],
-                'image' => "data:$mimeType;base64,$imageBase64",
-            ]);
-            return response()->json([
-                'message' => 'Course created successfully!',
-                'course_id' => $course->id,
-            ], 201);
+            if ($validatedData['id'] == 0) {
+                if (!$request->hasFile('image')) {
+                    return response()->json([
+                        'message' => 'Image is required for creating a new course',
+                    ], 422);
+                }
+                $imageFile = $request->file('image');
+                $imageContent = file_get_contents($imageFile->getRealPath());
+                $imageBase64 = base64_encode($imageContent);
+                $mimeType = $imageFile->getMimeType();
+                $course = Course::create([
+                    'name' => $validatedData['name'],
+                    'description' => $validatedData['description'],
+                    'price' => $validatedData['price'],
+                    'course_duration' => $validatedData['courseDuration'],
+                    'image' => "data:$mimeType;base64,$imageBase64",
+                ]);
+                return response()->json([
+                    'message' => 'Course created successfully!',
+                    'course_id' => $course->id,
+                ], 201);
+            } else {
+                $course = Course::find($validatedData['id']);
+                if (!$course) {
+                    return response()->json([
+                        'message' => 'Course not found',
+                    ], 404);
+                }
+                $updateData = [
+                    'name' => $validatedData['name'],
+                    'description' => $validatedData['description'],
+                    'price' => $validatedData['price'],
+                    'course_duration' => $validatedData['courseDuration'],
+                ];
+                if ($request->hasFile('image')) {
+                    $imageFile = $request->file('image');
+                    $imageContent = file_get_contents($imageFile->getRealPath());
+                    $imageBase64 = base64_encode($imageContent);
+                    $mimeType = $imageFile->getMimeType();
+                    $updateData['image'] = "data:$mimeType;base64,$imageBase64";
+                }
+                $course->update($updateData);
+                return response()->json([
+                    'message' => 'Course updated successfully!',
+                    'course_id' => $course->id,
+                ], 200);
+            }
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'message' => 'Validation failed',
@@ -45,7 +79,7 @@ class CourseContoller extends Controller
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'An error occurred while creating the course',
+                'message' => 'An error occurred while processing the course',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -164,32 +198,20 @@ class CourseContoller extends Controller
     }
 
 
-    public function get_teacher_courses_time(Request $request)
+    public function delete_course($courseID)
     {
-        try {
-            $token = $request->header('token');
-            if (!$token) {
-                return response()->json(['error' => 'Token not provided'], 401);
-            }
-            $payload = JWTAuth::setToken($token)->getPayload();
-            $userId = $payload->get('sub');
-            $user = User::find($userId);
-            if (!$user || !$user->teacher_id) {
-                return response()->json(['error' => 'Unauthorized or invalid teacher'], 403);
-            }
-            $courses = Course::with('classTimings')
-                ->where('teacherID', $user->teacher_id)
-                ->get();
+        $course = Course::find($courseID);
+        if (!$course) {
             return response()->json([
-                'message' => 'Courses with class timings fetched successfully!',
-                'courses' => $courses,
-            ], 200);
-        } catch (JWTException $e) {
-            return response()->json(['error' => 'Invalid or expired token'], 401);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'An error occurred: ' . $e->getMessage()], 500);
+                'message' => 'Course not found.',
+            ], 404);
         }
+        $course->delete();
+        return response()->json([
+            'message' => 'Course deleted successfully.',
+        ], 200);
     }
+
 
 
 

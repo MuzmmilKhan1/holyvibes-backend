@@ -21,46 +21,6 @@ class TeacherClassTimingsController extends Controller
         ], 200);
     }
 
-    public function add_edit_time(Request $request)
-    {
-        $validatedData = $request->validate([
-            "classTimingID" => "required|integer",
-            "courseID" => "required|integer|exists:courses,id",
-            "preferred_time_from" => "required",
-            "preferred_time_to" => "required",
-            "teacherID" => "required|integer|exists:teachers,id",
-        ]);
-        if ($validatedData['classTimingID'] == 0) {
-            $newTime = TeacherClassTimings::create([
-                'courseID' => $validatedData['courseID'],
-                'preferred_time_from' => $validatedData['preferred_time_from'],
-                'preferred_time_to' => $validatedData['preferred_time_to'],
-                'teacherID' => $validatedData['teacherID'],
-            ]);
-            return response()->json([
-                'message' => 'Class timing created successfully.',
-                'classTime' => $newTime,
-            ], 201);
-        } else {
-            $existingTime = TeacherClassTimings::find($validatedData['classTimingID']);
-            if (!$existingTime) {
-                return response()->json([
-                    'message' => 'Class timing not found.',
-                ], 404);
-            }
-            $existingTime->update([
-                'courseID' => $validatedData['courseID'],
-                'preferred_time_from' => $validatedData['preferred_time_from'],
-                'preferred_time_to' => $validatedData['preferred_time_to'],
-                'teacherID' => $validatedData['teacherID'],
-            ]);
-            return response()->json([
-                'message' => 'Class timing updated successfully.',
-                'classTime' => $existingTime->fresh(),
-            ], 200);
-        }
-    }
-
     public function delete_class_time($classTimingID)
     {
         $class_time = TeacherClassTimings::find($classTimingID);

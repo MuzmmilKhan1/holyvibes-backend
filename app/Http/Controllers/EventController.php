@@ -176,5 +176,59 @@ class EventController extends Controller
         ]);
     }
 
+    public function add_students(Request $request, $eventID)
+    {
+        try {
+            $request->validate([
+                'students' => 'required|array',
+                'students.*' => 'required|exists:students,id',
+            ]);
+            $eventExists = Event::where('id', $eventID)->first();
+            if (!$eventExists) {
+                return response()->json([
+                    'message' => 'Event not found.'
+                ], 404);
+            }
+            foreach ($request->students as $studentID) {
+                $existingParticipation = EventParticipant::where('eventID', $eventID)
+                    ->where('studentID', $studentID)
+                    ->first();
+                if ($existingParticipation) {
+                    $existingParticipation->update([
+                        'studentID' => $studentID,
+                    ]);
+                } else {
+                    EventParticipant::create([
+                        'eventID' => $eventID,
+                        'studentID' => $studentID,
+                        'is_member' => false,
+                        'payment_status' => $eventExists->isPaid ? 'pending' : "not_required",
+                    ]);
+                }
+            }
+            return response()->json([
+                'message' => 'Students processed successfully.',
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while processing students.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function delete_event($eventID)
+    {
+        if (!Event::destroy($eventID)) {
+            return response()->json([
+                'message' => 'Event not found.',
+            ], 404);
+        }
+        return response()->json([
+            'message' => 'Event deleted successfully.',
+        ], 200);
+    }
+    
 
 }

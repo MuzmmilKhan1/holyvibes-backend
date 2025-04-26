@@ -134,44 +134,82 @@ class StudentController extends Controller
     public function assign_login_credentials(Request $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
+            $rules = [
                 'id' => 'required|exists:students,id',
                 'studentID' => 'required|string',
                 'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
-                'password' => 'required|string|min:6',
-            ]);
+                'email' => 'required|email',
+                'isEdit' => 'required|boolean',
+            ];
+            if (!$request->isEdit) {
+                $rules['password'] = 'required|string|min:6';
+                $rules['email'] .= '|unique:users,email';
+            } else {
+                $rules['password'] = 'nullable|string|min:6';
+            }
+            $validator = Validator::make($request->all(), $rules);
             if ($validator->fails()) {
                 return response()->json(['error' => $validator->errors()], 422);
             }
             DB::beginTransaction();
             $student = Student::find($request->id);
             if (!$student) {
+                DB::rollBack();
                 return response()->json(['error' => 'Student not found'], 404);
             }
             $student->std_id = $request->studentID;
             $student->name = $request->name;
             $student->email = $request->email;
-            $student->status = 'allowed';
+            if (!$request->isEdit) {
+                $student->status = 'allowed';
+            }
             $student->save();
-            if (User::where('student_id', $student->id)->exists()) {
-                return response()->json(['error' => 'User account already exists for this student'], 409);
+            if ($request->isEdit) {
+                $user = User::where('student_id', $student->id)->first();
+                if (!$user) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'User account not found for this student'], 404);
+                }
+                $existingUser = User::where('email', $request->email)
+                    ->where('id', '!=', $user->id)
+                    ->first();
+                if ($existingUser) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'This email is already taken by another user'], 409);
+                }
+                $user->name = $request->name;
+                $user->email = $request->email;
+                if ($request->password) {
+                    $user->password = Hash::make($request->password);
+                }
+                $user->save();
+                DB::commit();
+                return response()->json([
+                    'message' => 'Student and user credentials updated successfully!',
+                ], 200);
+            } else {
+                if (User::where('student_id', $student->id)->exists()) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'User account already exists for this student'], 409);
+                }
+                if (User::where('email', $student->email)->exists()) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'This email is already taken by another user'], 409);
+                }
+                User::create([
+                    'student_id' => $student->id,
+                    'name' => $request->name,
+                    'email' => $request->email,
+                    'password' => Hash::make($request->password),
+                    'role' => 'student'
+                ]);
+                Billing::where('studentID', $student->id)->update(['paymentStatus' => 'paid']);
+
+                DB::commit();
+                return response()->json([
+                    'message' => 'Login credentials assigned successfully!',
+                ], 200);
             }
-            if (User::where('email', $student->email)->exists()) {
-                return response()->json(['error' => 'This email is already taken by another user'], 409);
-            }
-            User::create([
-                'student_id' => $student->id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => 'student'
-            ]);
-            Billing::where('studentID', $student->id)->update(['paymentStatus' => 'paid']);
-            DB::commit();
-            return response()->json([
-                'message' => 'Login credentials assigned successfully!',
-            ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -179,7 +217,6 @@ class StudentController extends Controller
             ], 500);
         }
     }
-
 
     public function get_std_courses(Request $request)
     {
@@ -217,18 +254,22 @@ class StudentController extends Controller
         if (!$token) {
             return response()->json(['error' => 'Token not provided'], 401);
         }
+
         try {
             $payload = JWTAuth::setToken($token)->getPayload();
             $userId = $payload->get('sub');
         } catch (\Exception $e) {
             return response()->json(['error' => 'Invalid token'], 401);
         }
+
         $user = User::find($userId);
         if (!$user || !$user->student_id) {
             return response()->json(['error' => 'Unauthorized or invalid student'], 403);
         }
+
         $studentID = $user->student_id;
-        $classes = StudentClassTimings::with(['class', 'course'])->whereNotNull('classID')
+        $classes = StudentClassTimings::with(['class', 'course', 'class.teacherClassTimings'])
+            ->whereNotNull('classID')
             ->where('classID', '!=', '')
             ->where('classID', '>', 0)
             ->where('courseID', $courseID)
@@ -241,42 +282,7 @@ class StudentController extends Controller
         ], 200);
     }
 
-    public function get_std_class_course_data(Request $request)
-    {
-        try {
-            $data = $request->all();
-            $result = [];
-            foreach ($data as $item) {
-                $classID = $item['classID'];
-                $courseID = $item['courseID'];
-                $classTimeID = $item['classTimeID'];
-                $class = ClassModel::find($classID);
-                $course = Course::find($courseID);
-                $classTime = TeacherClassTimings::find($classTimeID);
-
-                $result[] = [
-                    'class' => $class,
-                    'course' => $course,
-                    'classTime' => $classTime,
-                ];
-            }
-            return response()->json($result, 200);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Something went wrong: ' . $e->getMessage()], 500);
-        }
-    }
-
-    // public function get_allocated_class_course($studentID)
-    // {
-    //     try {
-    //         $data = Enrollment::with(['class.classTimings', 'course'])->where('studentId', $studentID)->get();
-    //         return response()->json($data, 200);
-
-    //     } catch (\Exception $e) {
-    //         return response()->json(['error' => 'Something went wrong: ' . $e->getMessage()], 500);
-    //     }
-    // }
-
+    
 
     public function purchase_course(Request $request)
     {
@@ -329,7 +335,7 @@ class StudentController extends Controller
 
     public function get_performance(Request $request, $classID)
     {
-        $studentID = $request->get('user')->std_id;
+        $studentID = $request->get('user')->student_id;
 
         $performance = StudentPerformance::with(['course', 'teacher', 'student'])
             ->where('classID', $classID)
@@ -350,5 +356,33 @@ class StudentController extends Controller
     }
 
 
+    public function delete_class_time($classTimingID)
+    {
+        $classTiming = StudentClassTimings::find($classTimingID);
+        if (!$classTiming) {
+            return response()->json([
+                'message' => 'Class time not found.',
+            ], 404);
+        }
+        $classTiming->delete();
+        return response()->json([
+            'message' => 'Student Classtime deleted succesfully.',
+        ], 200);
+    }
+
+    public function delete_student($studentID)
+    {
+        $student = Student::find($studentID);
+        if (!$student) {
+            return response()->json([
+                'message' => 'Student not found.',
+            ], 404);
+        }
+        $student->delete();
+        return response()->json([
+            'message' => 'Student deleted successfully.',
+        ], 200);
+    }
+    
 
 }

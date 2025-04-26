@@ -117,46 +117,65 @@ class TeacherAllotmentController extends Controller
         }
     }
 
+    public function update_allotment(Request $request, $allotmentID)
+    {
+        try {
+            $validatedData = $request->validate([
+                'studentId' => 'required|exists:students,id',
+                'teacherId' => 'required|exists:teachers,id',
+                'courseId' => 'required|exists:courses,id',
+                'classTimes' => 'required|array|min:1',
+                'classTimes.*.id' => 'nullable|exists:student_class_timings,id',
+                'classTimes.*.from' => 'required|string',
+                'classTimes.*.to' => 'required|string',
+            ]);
+            $allotment = TeacherAllotment::findOrFail($allotmentID);
+            $allotment->update([
+                'studentID' => $validatedData['studentId'],
+                'teacherID' => $validatedData['teacherId'],
+                'courseID' => $validatedData['courseId'],
+            ]);
+            foreach ($validatedData['classTimes'] as $timing) {
+                $stdClassTime = StudentClassTimings::findOrFail($timing['id']);
+                $stdClassTime->preferred_time_from = $timing['from'];
+                $stdClassTime->preferred_time_to = $timing['to'];
+                $stdClassTime->save();
+            }
+            return response()->json([
+                'message' => 'Teacher allotment updated successfully',
+                'allotment' => $allotment
 
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Teacher allotment not found',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while updating the teacher allotment',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
-    // public function update_allotment(Request $request, $id)
-    // {
-    //     $request->validate([
-    //         'studentId' => 'required|exists:students,id',
-    //         'teacherId' => 'required|exists:teachers,id',
-    //         'courseId' => 'required|exists:courses,id',
-    //         'classTimes' => 'required|array',
-    //         'classTimes.*.from' => 'required|string',
-    //         'classTimes.*.to' => 'required|string',
-    //     ]);
-
-    //     $allotment = TeacherAllotment::findOrFail($id);
-
-    //     $allotment->studentID = $request->studentId;
-    //     $allotment->teacherID = $request->teacherId;
-    //     $allotment->courseID = $request->courseId;
-    //     $allotment->save();
-
-    //     // First delete old class timings
-    //     $allotment->classTimings()->delete();
-
-    //     // Then insert updated class timings
-    //     foreach ($request->classTimes as $time) {
-    //         $allotment->classTimings()->create([
-    //             'preferred_time_from' => $time['from'],
-    //             'preferred_time_to' => $time['to'],
-    //         ]);
-    //     }
-
-    //     return response()->json([
-    //         'message' => 'Teacher allotment updated successfully',
-    //         'allotment' => $allotment->load('classTimings', 'student', 'teacher', 'course')
-    //     ]);
-    // }
-
-
-
-
+    public function delete_allotment($allotmentID)
+    {
+        $allotment = TeacherAllotment::findOrFail($allotmentID);
+        if (!$allotment) {
+            return response()->json([
+                'message' => 'Teacher allotment not found',
+            ], 404);
+        }
+        $allotment->delete();
+        return response()->json([
+            'message' => 'Teacher allotment deleted',
+        ], 200);
+    }
 }
 
 

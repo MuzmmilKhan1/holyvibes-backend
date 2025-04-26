@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ClassTimings;
-use App\Models\Course;
+use App\Models\ClassCourse;
 use App\Models\CourseTeacher;
+use App\Models\StudentClassTimings;
 use App\Models\StudentPerformance;
 use App\Models\Teacher;
+use App\Models\TeacherAllotment;
+use App\Models\TeacherClassTimings;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class TeacherController extends Controller
 {
@@ -141,14 +142,8 @@ class TeacherController extends Controller
         ]);
         $teacherID = $validatedData['teacherID'];
         $teacher = Teacher::find($teacherID);
-        $user = User::find($teacherID);
         if ($teacher) {
-            $teacher->classTimings()->delete();
-            Course::where('teacherID', $teacherID)->update(['teacherID' => null]);
             $teacher->delete();
-        }
-        if ($user) {
-            $user->delete();
         }
         return response()->json([
             'message' => 'Teacher deleted successfully.',
@@ -185,7 +180,19 @@ class TeacherController extends Controller
             'data' => $studentPerformance,
         ], 200);
     }
-    
+
+    public function remove_allocated_course($courseID) {
+        ClassCourse::where('courseID', $courseID)->delete();
+        StudentClassTimings::where('courseID', $courseID)->delete();
+        TeacherAllotment::where('courseID', $courseID)->delete();
+        CourseTeacher::where('courseID', $courseID)->delete();
+        TeacherClassTimings::where('courseID', $courseID)->delete();
+        StudentPerformance::where('courseID', $courseID)->delete();
+        return response()->json([
+            'success' => true,
+            'message' => 'Course and related records removed successfully'
+        ], 200);
+    }    
 
     public function block_or_unblock_teacher(Request $request)
     {
