@@ -267,7 +267,7 @@ class StudentController extends Controller
             'receipt' => 'required|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'classTimings' => 'required|array|min:1',
             'classTimings.*.from' => 'required|date_format:H:i',
-            'classTimings.*.to' => 'required|date_format:H:i|after:classTimings.*.from',
+            'classTimings.*.to' => 'required|date_format:H:i',
         ]);
 
         if ($validator->fails()) {

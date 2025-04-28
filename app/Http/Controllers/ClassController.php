@@ -123,7 +123,7 @@ class ClassController extends Controller
                 return [
                     'id' => $class->id,
                     'title' => $class->title,
-                    'classLink' => $class->classLink,
+                    'classLink' => $class->classLink ? $class->classLink : null,
                     'teacherID' => $class->teacherID,
                     'courses' => $class->courses->map(function ($course) {
                         return [
@@ -175,7 +175,6 @@ class ClassController extends Controller
         try {
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
-                'link' => 'required|string|max:255',
                 'classTime' => 'required|array',
                 'classTime.id' => 'required|integer|exists:teacher_class_timings,id',
                 'classTime.from' => 'required|',
@@ -188,7 +187,7 @@ class ClassController extends Controller
             DB::beginTransaction();
             try {
                 $class->title = $validated['title'];
-                $class->classLink = $validated['link'];
+                $class->classLink = $request->link;
                 $class->save();
                 $timing = TeacherClassTimings::where('id', $validated['classTime']['id'])->where('classID', $classID)->first();
                 if (!$timing) {

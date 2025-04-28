@@ -121,28 +121,35 @@ class AuthController extends Controller
 
     public function sendResetLinkEmail(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
-        $isEmailExist = User::where("email", $request->email)->first();
-        if (!$isEmailExist) {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
             return response()->json([
                 'message' => 'Email not found!',
             ], 404);
         }
-        $email = $request->email;
         $token = Str::random(60);
         PasswordReset::create([
-            'email' => $email,
+            'email' => $request->email,
             'token' => $token,
         ]);
-        Mail::raw("Click the link below to reset password:
-        https://portal.holyvibes.org/reset-password/$token/$request->email", function ($message) use ($email) {
-            $message->to($email)->subject('Password Reset Link');
-        });
-        return response()->json([
-            'message' => 'Password reset link sent!',
-        ], 200);
+        $resetLink = url("https://portal.holyvibes.org/reset-password/{$token}/" . urlencode($request->email));
+        try {
+            Mail::raw("Click the link below to reset your password:\n{$resetLink}", function ($message) use ($user) {
+                $message->to($user->email)->subject('Password Reset Link');
+            });
+            return response()->json([
+                'message' => 'Password reset link sent!',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to send reset link. Please try again later.',
+            ], 500);
+        }
     }
-
+    
     public function reset(Request $request)
     {
         $request->validate([
