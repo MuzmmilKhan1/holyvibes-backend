@@ -135,7 +135,7 @@ class AuthController extends Controller
             'token' => $token,
         ]);
         Mail::raw("Click the link below to reset password:
-        http://localhost:5173/reset-password/$token/$request->email", function ($message) use ($email) {
+        https://api.holyvibes.org/reset-password/$token/$request->email", function ($message) use ($email) {
             $message->to($email)->subject('Password Reset Link');
         });
         return response()->json([
