@@ -14,6 +14,7 @@ use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentPerformanceController;
 use App\Http\Controllers\StudentPolicyController;
 use App\Http\Middleware\StudentAuthMiddleware;
+use Illuminate\Support\Facades\Mail;
 
 Route::get('/ping', function () {
     return 'pong';
@@ -25,7 +26,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/create-account', [AuthController::class, "signup"]);
     Route::get('/create-admin', [AuthController::class, "create_admin"]);
     Route::get('/get', [AuthController::class, "get_user"]);
-
+    Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail']);
+    Route::post('/reset-password', [AuthController::class, 'reset']);
 });
 
 // course routes
@@ -49,7 +51,7 @@ Route::prefix('teacher')->group(function () {
     Route::post('/block', [TeacherController::class, "block_or_unblock_teacher"]);
     Route::post('/delete', [TeacherController::class, "delete_teacher"]);
     Route::get('/get-teacher-course', [TeacherController::class, "get_teacher_course"])->middleware([TeacherAuthMiddleware::class]);
-    Route::get('/get-std-performance',  [TeacherController::class, "get_std_performance"])->middleware([TeacherAuthMiddleware::class]);
+    Route::get('/get-std-performance', [TeacherController::class, "get_std_performance"])->middleware([TeacherAuthMiddleware::class]);
     Route::delete('/remove-allocated-course/{courseID}', [TeacherController::class, "remove_allocated_course"]);
 });
 
@@ -142,3 +144,5 @@ Route::prefix('student-performance')->group(function () {
     Route::put('/edit', [StudentPerformanceController::class, 'edit_performance']);
 
 });
+
+
