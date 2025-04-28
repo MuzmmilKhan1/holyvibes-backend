@@ -21,8 +21,6 @@ return [
 
     'allowed_origins' => [
         '*',
-        'https://portal.holyvibes.org/',
-        'http://localhost:5173/',  
     ],
 
     'allowed_origins_patterns' => [],
