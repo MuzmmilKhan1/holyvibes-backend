@@ -29,33 +29,31 @@ class StudentController extends Controller
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
                 'guardian_name' => 'required|string|max:255',
-                'email' => 'required|email',
+                'email' => 'required|email|unique:students,email|unique:users,email',
+                'password' => 'required|string|min:6',
                 'contact_number' => 'required|string|max:20',
                 'alternate_contact_number' => 'nullable|string|max:20',
                 'date_of_birth' => 'required|date',
                 'registration_date' => 'required|date',
                 'preferred_language' => 'required|string|max:50',
                 'signature' => 'required|string',
-                'courses' => 'required|array|min:1',
-                'courses.*.course_id' => 'required|integer|exists:courses,id',
-                'courses.*.course_name' => 'required|string',
-                'courses.*.timings' => 'required|array|min:1',
-                'courses.*.timings.*.from' => 'required|string',
-                'courses.*.timings.*.to' => 'required|string',
-                'courses.*.billing.receipt_image' => 'required|file|image|max:5048',
-                'courses.*.billing.payment_method' => 'required|string',
             ]);
 
             if ($validator->fails()) {
                 return response()->json(['error' => $validator->errors()], 422);
             }
-            $filteredCourses = collect($request->courses)->map(function ($course) {
-                return [
-                    'course_id' => $course['course_id'],
-                    'course_name' => $course['course_name'],
-                    'timings' => $course['timings'],
-                ];
-            });
+
+            $filteredCourses = collect([]);
+
+            if (!empty($request->courses)) {
+                $filteredCourses = collect($request->courses)->map(function ($course) {
+                    return [
+                        'course_id' => $course['course_id'],
+                        'course_name' => $course['course_name'],
+                        'timings' => $course['timings'],
+                    ];
+                });
+            }
             $student = Student::create([
                 'name' => $request->name,
                 'guardian_name' => $request->guardian_name,
@@ -66,23 +64,34 @@ class StudentController extends Controller
                 'registration_date' => $request->registration_date,
                 'preferred_language' => $request->preferred_language,
                 'signature' => $request->signature,
-                'class_course_data' => $filteredCourses->toJson(),
+                'class_course_data' => empty($request->courses) ? null : $filteredCourses->toJson(),
+                'status' => 'allowed',
             ]);
-            foreach ($request->courses as $course) {
-                $receiptImage = $course['billing']['receipt_image'];
-                $base64Receipt = base64_encode(file_get_contents($receiptImage->getRealPath()));
-                $mimeType = $receiptImage->getMimeType();
+            $newUser = User::create([
+                'student_id' => $student->id,
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'student',
+            ]);
 
-                Billing::create([
-                    'studentID' => $student->id,
-                    'courseID' => $course['course_id'],
-                    'receipt' => "data:$mimeType;base64,$base64Receipt",
-                    'paymentMethod' => $course['billing']['payment_method'],
-                    'paymentStatus' => 'pending',
-                ]);
+            if (!empty($request->courses)) {
+                foreach ($request->courses as $course) {
+                    $receiptImage = $course['billing']['receipt_image'];
+                    $base64Receipt = base64_encode(file_get_contents($receiptImage->getRealPath()));
+                    $mimeType = $receiptImage->getMimeType();
+                    Billing::create([
+                        'studentID' => $student->id,
+                        'courseID' => $course['course_id'],
+                        'receipt' => "data:$mimeType;base64,$base64Receipt",
+                        'paymentMethod' => $course['billing']['payment_method'],
+                        'paymentStatus' => 'pending',
+                    ]);
+                }
             }
+
             return response()->json([
-                'message' => 'Your application has been submitted successfully and is pending admin approval',
+                'message' => 'Student registered successfully!',
                 'student' => $student,
             ], 201);
         } catch (\Exception $e) {
@@ -121,103 +130,62 @@ class StudentController extends Controller
     public function get_billing_details($studentID)
     {
         try {
-            $billing_details = Billing::with(['course'])->where('studentID', $studentID)->get();
+            $billing_details = Billing::with(['course'])
+                ->where('studentID', $studentID)
+                ->get();
+    
+            if ($billing_details->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Billing details not found!',
+                    'data' => null
+                ], 404);
+            }
+    
             return response()->json([
-                'message' => 'Billing Details found successfully!',
-                'billingDetails' => $billing_details,
+                'success' => true,
+                'message' => 'Billing details found successfully!',
+                'data' => $billing_details
             ], 200);
+    
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Something went wrong: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
     public function assign_login_credentials(Request $request)
     {
-        try {
-            $rules = [
-                'id' => 'required|exists:students,id',
-                'studentID' => 'required|string',
-                'name' => 'required|string|max:255',
-                'email' => 'required|email',
-                'isEdit' => 'required|boolean',
-            ];
-            if (!$request->isEdit) {
-                $rules['password'] = 'required|string|min:6';
-                $rules['email'] .= '|unique:users,email';
-            } else {
-                $rules['password'] = 'nullable|string|min:6';
-            }
-            $validator = Validator::make($request->all(), $rules);
-            if ($validator->fails()) {
-                return response()->json(['error' => $validator->errors()], 422);
-            }
-            DB::beginTransaction();
-            $student = Student::find($request->id);
-            if (!$student) {
-                DB::rollBack();
-                return response()->json(['error' => 'Student not found'], 404);
-            }
-            $student->std_id = $request->studentID;
-            $student->name = $request->name;
-            $student->email = $request->email;
-            if (!$request->isEdit) {
-                $student->status = 'allowed';
-            }
-            $student->save();
-            if ($request->isEdit) {
-                $user = User::where('student_id', $student->id)->first();
-                if (!$user) {
-                    DB::rollBack();
-                    return response()->json(['error' => 'User account not found for this student'], 404);
-                }
-                $existingUser = User::where('email', $request->email)
-                    ->where('id', '!=', $user->id)
-                    ->first();
-                if ($existingUser) {
-                    DB::rollBack();
-                    return response()->json(['error' => 'This email is already taken by another user'], 409);
-                }
-                $user->name = $request->name;
-                $user->email = $request->email;
-                if ($request->password) {
-                    $user->password = Hash::make($request->password);
-                }
-                $user->save();
-                DB::commit();
-                return response()->json([
-                    'message' => 'Student and user credentials updated successfully!',
-                ], 200);
-            } else {
-                if (User::where('student_id', $student->id)->exists()) {
-                    DB::rollBack();
-                    return response()->json(['error' => 'User account already exists for this student'], 409);
-                }
-                if (User::where('email', $student->email)->exists()) {
-                    DB::rollBack();
-                    return response()->json(['error' => 'This email is already taken by another user'], 409);
-                }
-                User::create([
-                    'student_id' => $student->id,
-                    'name' => $request->name,
-                    'email' => $request->email,
-                    'password' => Hash::make($request->password),
-                    'role' => 'student'
-                ]);
-                Billing::where('studentID', $student->id)->update(['paymentStatus' => 'paid']);
-
-                DB::commit();
-                return response()->json([
-                    'message' => 'Login credentials assigned successfully!',
-                ], 200);
-            }
-        } catch (\Exception $e) {
-            DB::rollBack();
+        $validator = Validator::make($request->all(), [
+            'id' => 'required|exists:students,id',
+            'studentID' => 'required|string',
+        ]);
+    
+        if ($validator->fails()) {
             return response()->json([
-                'error' => 'Something went wrong: ' . $e->getMessage()
-            ], 500);
+                'errors' => $validator->errors()
+            ], 422);
         }
+    
+        $student = Student::find($request->id);
+    
+        if (!$student) {
+            return response()->json([
+                'message' => 'Student not found.',
+            ], 404);
+        }
+    
+        $student->std_id = $request->studentID;
+        $student->save(); // Make sure to save changes
+    
+        return response()->json([
+            'message' => 'StudentID assigned successfully!',
+        ], 200);
     }
-
+    
     public function get_std_courses(Request $request)
     {
         $token = $request->header('token');
@@ -276,13 +244,20 @@ class StudentController extends Controller
             ->where('studentID', $studentID)
             ->get();
 
+        if ($classes->isEmpty()) {
+
+        return response()->json([
+            'message' => 'No classes are available!',
+        ], 404);
+        }
+
         return response()->json([
             'message' => 'Class timings found successfully!',
             'classes' => $classes
         ], 200);
     }
 
-    
+
 
     public function purchase_course(Request $request)
     {
@@ -383,6 +358,6 @@ class StudentController extends Controller
             'message' => 'Student deleted successfully.',
         ], 200);
     }
-    
+
 
 }
