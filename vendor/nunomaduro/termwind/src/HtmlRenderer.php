@@ -38,8 +38,14 @@ final class HtmlRenderer
         $html = '<?xml encoding="UTF-8">'.trim($html);
         $dom->loadHTML($html, LIBXML_NOERROR | LIBXML_COMPACT | LIBXML_HTML_NODEFDTD | LIBXML_NOBLANKS | LIBXML_NOXMLDECL);
 
-        /** @var DOMNode $body */
+        /** @var DOMNode|null $body */
         $body = $dom->getElementsByTagName('body')->item(0);
+
+        // Check if $body is null; if so, return an empty span to avoid the TypeError
+        if ($body === null) {
+            return Termwind::span('');
+        }
+
         $el = $this->convert(new Node($body));
 
         // @codeCoverageIgnoreStart
