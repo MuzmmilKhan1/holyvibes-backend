@@ -133,7 +133,7 @@ class StudentController extends Controller
             $billing_details = Billing::with(['course'])
                 ->where('studentID', $studentID)
                 ->get();
-    
+
             if ($billing_details->isEmpty()) {
                 return response()->json([
                     'success' => false,
@@ -141,13 +141,13 @@ class StudentController extends Controller
                     'data' => null
                 ], 404);
             }
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Billing details found successfully!',
                 'data' => $billing_details
             ], 200);
-    
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -163,29 +163,29 @@ class StudentController extends Controller
             'id' => 'required|exists:students,id',
             'studentID' => 'required|string',
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json([
                 'errors' => $validator->errors()
             ], 422);
         }
-    
+
         $student = Student::find($request->id);
-    
+
         if (!$student) {
             return response()->json([
                 'message' => 'Student not found.',
             ], 404);
         }
-    
+
         $student->std_id = $request->studentID;
         $student->save(); // Make sure to save changes
-    
+
         return response()->json([
             'message' => 'StudentID assigned successfully!',
         ], 200);
     }
-    
+
     public function get_std_courses(Request $request)
     {
         $token = $request->header('token');
@@ -246,9 +246,9 @@ class StudentController extends Controller
 
         if ($classes->isEmpty()) {
 
-        return response()->json([
-            'message' => 'No classes are available!',
-        ], 404);
+            return response()->json([
+                'message' => 'No classes are available!',
+            ], 404);
         }
 
         return response()->json([
@@ -358,6 +358,33 @@ class StudentController extends Controller
             'message' => 'Student deleted successfully.',
         ], 200);
     }
+
+
+    public function get_filtered_stds($courseID)
+    {
+        if (is_null($courseID)) {
+            return response()->json([
+                'message' => 'Please select a filter.',
+                'students' => [],
+            ], 400);
+        }
+        $students = TeacherAllotment::where('courseID', $courseID)
+            ->get()
+            ->pluck('student')
+            ->filter();
+        if ($students->isEmpty()) {
+            return response()->json([
+                'message' => 'Students not found.',
+                'students' => [],
+            ], 404);
+        }
+        return response()->json([
+            'message' => 'Students found successfully.',
+            'students' => $students->values(),
+        ]);
+    }
+
+
 
 
 }

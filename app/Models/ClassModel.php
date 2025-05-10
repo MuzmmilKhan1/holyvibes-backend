@@ -40,4 +40,5 @@ class ClassModel extends Model
     {
         return $this->hasMany(TeacherClassTimings::class, 'classID');
     }
+
 }

@@ -72,22 +72,69 @@ class TeacherController extends Controller
         ], 200);
     }
 
+    public function get_filtered_teachers($studentID, $courseID)
+    {
+        try {
+            $studentID = $studentID === 'null' ? null : $studentID;
+            $courseID = $courseID === 'null' ? null : $courseID;
+    
+            if (is_null($courseID) && is_null($studentID)) {
+                return response()->json([
+                    'message' => 'Please select at least one filter.',
+                ], 400);
+            }
+    
+            if ($courseID && !$studentID) {
+                $teachers = CourseTeacher::where('courseID', $courseID)
+                    ->with('teacher')
+                    ->get()
+                    ->pluck('teacher');
+            } elseif ($studentID && !$courseID) {
+                $teachers = TeacherAllotment::where('studentID', $studentID)
+                    ->with('teacher')
+                    ->get()
+                    ->pluck('teacher');
+            } else {
+                $teachers = TeacherAllotment::where('studentID', $studentID)
+                    ->where('courseID', $courseID)
+                    ->with('teacher')
+                    ->get()
+                    ->pluck('teacher');
+            }
+    
+            return response()->json([
+                'message' => $teachers->isEmpty()
+                    ? 'No teachers found for the provided criteria.'
+                    : 'Teachers found successfully.',
+                'teachers' => $teachers,
+            ], 200);
+    
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while fetching teachers.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    
+    
+    
     public function assign_login_credentials(Request $request)
     {
         try {
             $validatedData = $request->validate([
-                'id' => 'required|integer', 
+                'id' => 'required|integer',
                 'teacherID' => 'required|integer|exists:teachers,id',
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|',
                 'password' => 'required|string|min:6',
                 'isEdit' => 'required|boolean',
             ]);
-            $teacher = Teacher::findOrFail($validatedData['teacherID']); 
+            $teacher = Teacher::findOrFail($validatedData['teacherID']);
             $teacher->update([
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
-                'teach_id' => $validatedData['id'], 
+                'teach_id' => $validatedData['id'],
                 'status' => 'allowed',
             ]);
 
@@ -130,7 +177,7 @@ class TeacherController extends Controller
             return response()->json([
                 'message' => 'An error occurred while processing your request',
                 'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTrace() : null, // Only show trace in debug mode
+                'trace' => config('app.debug') ? $e->getTrace() : null,
             ], 500);
         }
     }
@@ -163,25 +210,26 @@ class TeacherController extends Controller
     public function get_std_performance(Request $request)
     {
         $teacherID = $request->get('user')->teacher_id;
-    
-        $studentPerformance = StudentPerformance::with(['student', 'course','class'])
+
+        $studentPerformance = StudentPerformance::with(['student', 'course', 'class'])
             ->where('teacherID', $teacherID)
             ->get();
-    
+
         if ($studentPerformance->isEmpty()) {
             return response()->json([
                 'message' => 'No student performance records found for this teacher.',
                 'data' => [],
             ], 404);
         }
-    
+
         return response()->json([
             'message' => 'Student performance data fetched successfully.',
             'data' => $studentPerformance,
         ], 200);
     }
 
-    public function remove_allocated_course($courseID) {
+    public function remove_allocated_course($courseID)
+    {
         ClassCourse::where('courseID', $courseID)->delete();
         StudentClassTimings::where('courseID', $courseID)->delete();
         TeacherAllotment::where('courseID', $courseID)->delete();
@@ -192,7 +240,7 @@ class TeacherController extends Controller
             'success' => true,
             'message' => 'Course and related records removed successfully'
         ], 200);
-    }    
+    }
 
     public function block_or_unblock_teacher(Request $request)
     {

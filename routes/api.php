@@ -48,7 +48,8 @@ Route::prefix('teacher')->group(function () {
     Route::post('/requested-teacher', [TeacherController::class, "handle_requested_teacher"]);
     Route::post('/assign_login_credentials', [TeacherController::class, "assign_login_credentials"]);
     Route::get('/get', [TeacherController::class, "get_teachers"]);
-    Route::post('/block', [TeacherController::class, "block_or_unblock_teacher"]);
+    Route::get('/get-filtered-teacher/{studentID}/{courseID}', [TeacherController::class, "get_filtered_teachers"]);
+    Route::post('/block', action: [TeacherController::class, "block_or_unblock_teacher"]);
     Route::post('/delete', [TeacherController::class, "delete_teacher"]);
     Route::get('/get-teacher-course', [TeacherController::class, "get_teacher_course"])->middleware([TeacherAuthMiddleware::class]);
     Route::get('/get-std-performance', [TeacherController::class, "get_std_performance"])->middleware([TeacherAuthMiddleware::class]);
@@ -74,6 +75,8 @@ Route::prefix('class')->group(function () {
     Route::delete('/remove-std/{classID}/{studentID}/{stdClassTimingID}', [ClassController::class, "remove_students"]);
     Route::delete('/delete/{classID}', [ClassController::class, "delete_class"]);
     Route::get('/get-all', [ClassController::class, "get_all"]);
+    Route::get('/get-filtered-classes/{teacherID}/{courseID}', [ClassController::class, "get_filtered_classes"]);
+
 });
 
 // student policy routes
@@ -81,6 +84,7 @@ Route::prefix('student-policy')->group(function () {
     Route::post('/create-and-edit', [StudentPolicyController::class, "create_edit_policy"]);
     Route::get('/get', [StudentPolicyController::class, "get_policy"]);
     Route::delete('/delete/{policyID}', [StudentPolicyController::class, "delete_policy"]);
+
 });
 
 // event routes
@@ -112,6 +116,7 @@ Route::prefix('student')->group(function () {
     Route::get('/get-performance/{classID}', [StudentController::class, 'get_performance'])->middleware([StudentAuthMiddleware::class]);
     Route::delete('/delete-std-time/{classTimingID}', [StudentController::class, "delete_class_time"]);
     Route::delete('/delete/{studentID}', [StudentController::class, "delete_student"]);
+    Route::get('/get-filtered-stds/{courseID}', [StudentController::class, "get_filtered_stds"]);
 
 });
 

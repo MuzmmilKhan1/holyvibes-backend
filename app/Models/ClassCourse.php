@@ -25,4 +25,12 @@ class ClassCourse extends Model
     {
         return $this->belongsTo(Course::class, 'courseID');
     }
+
+
+    public function teacherClassTimings()
+    {
+        return $this->hasMany(TeacherClassTimings::class, 'classID');
+    }
+
+
 }

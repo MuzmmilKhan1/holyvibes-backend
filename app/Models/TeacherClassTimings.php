@@ -26,6 +26,6 @@ class TeacherClassTimings extends Model
     }
     public function class()
     {
-        return $this->belongsTo(Course::class, 'classID');
+        return $this->belongsTo(ClassModel::class, 'classID');
     }
 }

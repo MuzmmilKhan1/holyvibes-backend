@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PasswordReset as MailPasswordReset;
 use App\Models\PasswordReset;
 use App\Models\Student;
 use App\Models\Teacher;
@@ -137,9 +138,12 @@ class AuthController extends Controller
         ]);
         $resetLink = url("https://portal.holyvibes.org/reset-password/{$token}/" . urlencode($request->email));
         try {
-            Mail::raw("Click the link below to reset your password:\n{$resetLink}", function ($message) use ($user) {
-                $message->to($user->email)->subject('Password Reset Link');
-            });
+            // Mail::raw("Click the link below to reset your password:\n{$resetLink}", function ($message) use ($user) {
+            //     $message->to($user->email)->subject('Password Reset Link');
+            // });
+
+            Mail::to($user->email)->send(new MailPasswordReset($user, $resetLink));
+
             return response()->json([
                 'message' => 'Password reset link sent!',
             ], 200);

@@ -30,6 +30,11 @@ class Student extends Model
         return $this->hasMany(CourseEnrollment::class, 'studentId');
     }
 
+    public function teacherAllotment()
+    {
+        return $this->hasMany(TeacherAllotment::class, 'studentId');
+    }
+
     public function billing()
     {
         return $this->hasMany(Billing::class, 'studentID');
