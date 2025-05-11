@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ClassMail;
+use App\Models\Course;
 use App\Models\CourseTeacher;
+use App\Models\Student;
 use App\Models\StudentClassTimings;
+use App\Models\Teacher;
 use App\Models\TeacherAllotment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class TeacherAllotmentController extends Controller
 {
-
     public function allot_teacher(Request $request)
     {
         $validated = $request->validate([
@@ -23,6 +27,7 @@ class TeacherAllotmentController extends Controller
             'classTimes.*.from' => 'required|string',
             'classTimes.*.to' => 'required|string',
         ]);
+
         DB::beginTransaction();
         try {
             $isCourseAssign = CourseTeacher::where('teacherID', $validated['teacherId'])
@@ -33,17 +38,13 @@ class TeacherAllotmentController extends Controller
                     'error' => 'Teacher is not assigned to this course.'
                 ], 400);
             }
-            $existingAllotment = TeacherAllotment::where('teacherID', $validated['teacherId'])
-                ->where('studentID', $validated['studentId'])
-                ->where('courseID', $validated['courseId'])
-                ->first();
-            if (!$existingAllotment) {
-                $existingAllotment = TeacherAllotment::create([
-                    'teacherID' => $validated['teacherId'],
-                    'studentID' => $validated['studentId'],
-                    'courseID' => $validated['courseId'],
-                ]);
-            }
+
+            $existingAllotment = TeacherAllotment::firstOrCreate([
+                'teacherID' => $validated['teacherId'],
+                'studentID' => $validated['studentId'],
+                'courseID' => $validated['courseId'],
+            ]);
+
             foreach ($validated['classTimes'] as $timing) {
                 $existingTiming = StudentClassTimings::where('studentID', $validated['studentId'])
                     ->where('preferred_time_from', $timing['from'])
@@ -65,10 +66,37 @@ class TeacherAllotmentController extends Controller
             }
 
             DB::commit();
+
+            $teacher = Teacher::find($validated['teacherId']);
+            $student = Student::find($validated['studentId']);
+            $course = Course::find($validated['courseId']);
+
+            $timeSlots = collect($validated['classTimes'])
+                ->map(fn($t) => $t['from'] . ' - ' . $t['to'])
+                ->implode('<br>');
+
+
+            $title = 'New Student Allotted for Course';
+            $subtitle = 'Student: ' . $student->name;
+            $body = 'Dear ' . $teacher->name . ',<br><br>' .
+                'You have been allotted to a student for the course "<strong>' . $course->name . '</strong>".<br>' .
+                'Student: <strong>' . $student->name . '</strong><br>' .
+                'Scheduled Class Timings:<br>' . $timeSlots . '<br><br>' .
+                'Thank you,<br>The HolyVibes Team';
+            Mail::to($teacher->email)->send(new ClassMail($title, $subtitle, $body));
+
+            $title = 'Teacher Assigned for Your Course';
+            $subtitle = 'Course: ' . $course->name;
+            $body = 'Dear ' . $student->name . ',<br><br>' .
+                'You have been assigned a teacher for your course "<strong>' . $course->name . '</strong>".<br>' .
+                'Teacher: <strong>' . $teacher->name . '</strong><br>' .
+                'Scheduled Class Timings:<br>' . $timeSlots . '<br><br>' .
+                'Thank you,<br>The HolyVibes Team';
+            Mail::to($student->email)->send(new ClassMail($title, $subtitle, $body));
+
             return response()->json([
                 'message' => 'Teacher allotment and class timings updated successfully',
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -77,6 +105,7 @@ class TeacherAllotmentController extends Controller
             ], 500);
         }
     }
+
 
     public function get_allotment()
     {
@@ -87,7 +116,6 @@ class TeacherAllotmentController extends Controller
                 'message' => 'Teacher allotment found successfully',
                 'teacherAllotment' => $teacherAllotment,
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to get allotted teacher',
@@ -108,7 +136,6 @@ class TeacherAllotmentController extends Controller
                 'message' => 'Teacher allotment found successfully',
                 'teacherAllotment' => $teacherAllotment,
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to get allotted teacher',
@@ -129,23 +156,55 @@ class TeacherAllotmentController extends Controller
                 'classTimes.*.from' => 'required|string',
                 'classTimes.*.to' => 'required|string',
             ]);
+
             $allotment = TeacherAllotment::findOrFail($allotmentID);
             $allotment->update([
                 'studentID' => $validatedData['studentId'],
                 'teacherID' => $validatedData['teacherId'],
                 'courseID' => $validatedData['courseId'],
             ]);
+
+            $timeSlots = '';
             foreach ($validatedData['classTimes'] as $timing) {
                 $stdClassTime = StudentClassTimings::findOrFail($timing['id']);
                 $stdClassTime->preferred_time_from = $timing['from'];
                 $stdClassTime->preferred_time_to = $timing['to'];
                 $stdClassTime->save();
-            }
-            return response()->json([
-                'message' => 'Teacher allotment updated successfully',
-                'allotment' => $allotment
 
+                $timeSlots .= 'From: ' . $timing['from'] . ' To: ' . $timing['to'] . '<br>';
+            }
+
+            // Send notifications
+            $student = Student::findOrFail($validatedData['studentId']);
+            $teacher = Teacher::findOrFail($validatedData['teacherId']);
+            $course = Course::findOrFail($validatedData['courseId']);
+
+            // Notify teacher
+            $title = 'Allotment Updated for Your Course';
+            $subtitle = 'Updated Teacher Assignment: ' . $teacher->name;
+            $body = 'Dear ' . $student->name . ',<br><br>' .
+                'Your teacher allotment for the course "<strong>' . $course->name . '</strong>" has been <strong>updated</strong>.<br>' .
+                'Teacher: <strong>' . $teacher->name . '</strong><br>' .
+                'Updated Class Timings:<br>' . $timeSlots . '<br><br>' .
+                'Thank you,<br>The HolyVibes Team';
+            Mail::to($student->email)->send(new ClassMail($title, $subtitle, $body));
+
+            // Notify student
+            $title = 'Allotment Updated for Student';
+            $subtitle = 'Updated Student Allotment: ' . $student->name;
+            $body = 'Dear ' . $teacher->name . ',<br><br>' .
+                'The allotment details for your student in the course "<strong>' . $course->name . '</strong>" have been <strong>updated</strong>.<br>' .
+                'Student: <strong>' . $student->name . '</strong><br>' .
+                'Updated Class Timings:<br>' . $timeSlots . '<br><br>' .
+                'Thank you,<br>The HolyVibes Team';
+            Mail::to($teacher->email)->send(new ClassMail($title, $subtitle, $body));
+
+
+            return response()->json([
+                'message' => 'Teacher allotment updated successfully and notifications sent',
+                'allotment' => $allotment
             ], 200);
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'message' => 'Validation failed',
@@ -163,19 +222,36 @@ class TeacherAllotmentController extends Controller
         }
     }
 
+
     public function delete_allotment($allotmentID)
     {
         $allotment = TeacherAllotment::findOrFail($allotmentID);
-        if (!$allotment) {
-            return response()->json([
-                'message' => 'Teacher allotment not found',
-            ], 404);
-        }
+
+        $student = Student::findOrFail($allotment->studentID);
+        $teacher = Teacher::findOrFail($allotment->teacherID);
+        $course = Course::findOrFail($allotment->courseID);
+
         $allotment->delete();
+
+        $title = 'Allotment Removed';
+        $subtitle = 'Course: ' . $course->name;
+
+        $teacherBody = 'Dear ' . $teacher->name . ',<br><br>' .
+            'The student allotment for the course "<strong>' . $course->name . '</strong>" has been <strong>removed</strong>.<br>' .
+            'Student: <strong>' . $student->name . '</strong><br><br>' .
+            'Thank you,<br>The HolyVibes Team';
+
+        $studentBody = 'Dear ' . $student->name . ',<br><br>' .
+            'Your teacher allotment for the course "<strong>' . $course->name . '</strong>" has been <strong>removed</strong>.<br>' .
+            'Teacher: <strong>' . $teacher->name . '</strong><br><br>' .
+            'Thank you,<br>The HolyVibes Team';
+
+        Mail::to($teacher->email)->send(new ClassMail($title, $subtitle, $teacherBody));
+        Mail::to($student->email)->send(new ClassMail($title, $subtitle, $studentBody));
+
         return response()->json([
-            'message' => 'Teacher allotment deleted',
+            'message' => 'Teacher allotment deleted and notifications sent',
         ], 200);
     }
+
 }
-
-

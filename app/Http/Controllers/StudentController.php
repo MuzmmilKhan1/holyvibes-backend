@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ClassMail;
 use App\Models\ClassEnrollment;
+use App\Models\EventBilling;
 use App\Models\Student;
 use App\Models\Billing;
 use App\Models\ClassModel;
@@ -20,6 +22,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 
 class StudentController extends Controller
 {
@@ -29,7 +32,7 @@ class StudentController extends Controller
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
                 'guardian_name' => 'required|string|max:255',
-                'email' => 'required|email|unique:students,email|unique:users,email',
+                'email' => 'required|email|unique:students,email|unique:users,email|unique:teachers,email',
                 'password' => 'required|string|min:6',
                 'contact_number' => 'required|string|max:20',
                 'alternate_contact_number' => 'nullable|string|max:20',
@@ -90,6 +93,29 @@ class StudentController extends Controller
                 }
             }
 
+            $admin = User::where("role", "admin")->first();
+            $title = 'New Student Registered';
+            $subtitle = 'A new student has registered';
+            $body = 'A new student has registered with the following details:<br><br>
+            <strong>Name:</strong> ' . $student->name . '<br>
+            <strong>Email:</strong> ' . $student->email . '<br><br>
+            Please review the registration details.<br><br>
+            <p>Thanks,<br>The HolyVibes Team</p>';
+            Mail::to($admin->email)->send(new ClassMail($title, $subtitle, $body));
+
+            $studentTitle = 'Registration Confirmation';
+            $studentSubtitle = 'Welcome to the platform!';
+            $studentBody = 'Dear ' . $student->name . ',<br><br>
+            You have successfully registered with the following details:<br><br>
+            <strong>Name:</strong> ' . $student->name . '<br>
+            <strong>Email:</strong> ' . $student->email . '<br><br>
+            We are excited to have you on board!<br><br>
+            <p>Thanks,<br>The HolyVibes Team</p>';
+            Mail::to($request->email)->send(new ClassMail($studentTitle, $studentSubtitle, $studentBody));
+
+
+
+
             return response()->json([
                 'message' => 'Student registered successfully!',
                 'student' => $student,
@@ -147,7 +173,6 @@ class StudentController extends Controller
                 'message' => 'Billing details found successfully!',
                 'data' => $billing_details
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -179,10 +204,16 @@ class StudentController extends Controller
         }
 
         $student->std_id = $request->studentID;
-        $student->save(); // Make sure to save changes
+        $student->save();
+
+        $title = 'Student ID Assigned';
+        $subtitle = '';
+        $body = 'Dear ' . $student->name . ',<br><br>Your Student ID is: <strong>' . $student->std_id . '<p>Thanks,<br>The HolyVibes Team</p>';
+
+        Mail::to($student->email)->send(new ClassMail($title, $subtitle, $body));
 
         return response()->json([
-            'message' => 'StudentID assigned successfully!',
+            'message' => 'Student ID assigned and email sent.',
         ], 200);
     }
 
@@ -275,15 +306,18 @@ class StudentController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
+
         $course = Course::find($request->courseID);
         $studentID = $request->get('user')->student_id;
         $paymentMethod = $request->paymentMethod;
         $classTimings = $request->classTimings;
+
         $file = $request->file('receipt');
         $fileContents = File::get($file->getRealPath());
         $base64Receipt = base64_encode($fileContents);
         $mime = $file->getClientMimeType();
         $base64Receipt = "data:{$mime};base64," . $base64Receipt;
+
         $billing = new Billing();
         $billing->studentID = $studentID;
         $billing->courseID = $course->id;
@@ -291,7 +325,10 @@ class StudentController extends Controller
         $billing->receipt = $base64Receipt;
         $billing->paymentStatus = 'paid';
         $billing->save();
+
         $student = Student::find($studentID);
+        $admin = User::where('role', 'admin')->first();
+
         $classCourseData = $student->class_course_data ? json_decode($student->class_course_data, true) : [];
         $newCourseData = [
             'timings' => $classTimings,
@@ -301,6 +338,26 @@ class StudentController extends Controller
         $classCourseData[] = $newCourseData;
         $student->class_course_data = json_encode($classCourseData);
         $student->save();
+
+        $studentTitle = 'Course Purchase Confirmation';
+        $studentSubtitle = 'You have successfully submitted billing details';
+        $studentBody = '<p>Dear ' . $student->name . ',</p>
+        <p>Your billing details for the course <strong>"' . $course->name . '"</strong> have been successfully submitted.</p>
+        <p>The admin will review your payment and assign your classes shortly.</p>
+        <p>Thank you for your purchase!</p>
+        <p>Best regards,<br>The HolyVibes Team</p>';
+        Mail::to($student->email)->send(new ClassMail($studentTitle, $studentSubtitle, $studentBody));
+
+        if ($admin) {
+            $adminTitle = 'New Course Purchase Submitted';
+            $adminSubtitle = 'A student has submitted billing for a course';
+            $adminBody = '<p>Dear Admin,</p>
+            <p>The student <strong>' . $student->name . '</strong> has submitted a payment for the course <strong>"' . $course->name . '"</strong> using <strong>' . $paymentMethod . '</strong>.</p>
+            <p>Please verify the payment and assign class timings accordingly.</p>
+            <p>Regards,<br>The HolyVibes System</p>';
+            Mail::to($admin->email)->send(new ClassMail($adminTitle, $adminSubtitle, $adminBody));
+        }
+
         return response()->json([
             'message' => 'Billing details have been sent to the admin. Admin will allot the classes soon.',
             'billing_id' => $billing->id
@@ -353,12 +410,17 @@ class StudentController extends Controller
                 'message' => 'Student not found.',
             ], 404);
         }
+        $email = $student->email;
+        $name = $student->name;
         $student->delete();
+        $title = 'Account Deletion Notice';
+        $subtitle = '';
+        $body = 'Dear ' . $name . ',<br><br>Your student account has been deleted from our system.<br><br>If you have any questions or believe this was a mistake, please contact support.<br><br>Thanks,<br>The HolyVibes Team';
+        Mail::to($email)->send(new ClassMail($title, $subtitle, $body));
         return response()->json([
-            'message' => 'Student deleted successfully.',
+            'message' => 'Student deleted and email sent successfully.',
         ], 200);
     }
-
 
     public function get_filtered_stds($courseID)
     {
@@ -384,6 +446,37 @@ class StudentController extends Controller
         ]);
     }
 
+    public function billing(Request $request)
+    {
+        $studentID = $request->get('user')->student_id;
+        $eventBilling = EventBilling::where('studentID', $studentID)
+            ->with('event')
+            ->get();
+        $courseBilling = Billing::where('studentID', $studentID)
+            ->with('course')
+            ->get();
+        $mergedBilling = $eventBilling->concat($courseBilling);
+        return response()->json([
+            'message' => 'Billing details found successfully.',
+            'billing' => $mergedBilling,
+        ]);
+    }
+
+
+ public function classes(Request $request)
+{
+    $studentID = $request->get('user')->student_id;
+
+    $classes = StudentClassTimings::with('class')
+        ->where('studentID', $studentID)
+        ->whereNotNull('classID')
+        ->get();
+
+    return response()->json([
+        'message' => 'Classes found successfully.',
+        'classes' => $classes,
+    ]);
+}
 
 
 

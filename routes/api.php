@@ -117,6 +117,9 @@ Route::prefix('student')->group(function () {
     Route::delete('/delete-std-time/{classTimingID}', [StudentController::class, "delete_class_time"]);
     Route::delete('/delete/{studentID}', [StudentController::class, "delete_student"]);
     Route::get('/get-filtered-stds/{courseID}', [StudentController::class, "get_filtered_stds"]);
+    Route::get('/billing', [StudentController::class, "billing"])->middleware([StudentAuthMiddleware::class]);
+    Route::get('/classes', [StudentController::class, "classes"])->middleware([StudentAuthMiddleware::class]);
+
 
 });
 

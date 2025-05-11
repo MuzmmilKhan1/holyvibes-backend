@@ -10,6 +10,7 @@ use App\Models\ClassTimings;
 use App\Models\Course;
 use App\Models\Student;
 use App\Models\StudentClassTimings;
+use App\Models\Teacher;
 use App\Models\TeacherAllotment;
 use App\Models\TeacherClassTimings;
 use App\Models\User;
@@ -244,20 +245,25 @@ class ClassController extends Controller
             if (!$class) {
                 return response()->json(['error' => 'Class not found'], 404);
             }
+
             DB::beginTransaction();
             try {
                 $class->title = $validated['title'];
                 $class->classLink = $request->link;
                 $class->save();
+
                 $timing = TeacherClassTimings::where('id', $validated['classTime']['id'])
                     ->where('classID', $classID)->first();
+
                 if (!$timing) {
                     DB::rollBack();
                     return response()->json(['error' => 'Timing record not found'], 404);
                 }
+
                 $timing->preferred_time_from = $validated['classTime']['from'];
                 $timing->preferred_time_to = $validated['classTime']['to'];
                 $timing->save();
+
                 DB::commit();
                 $title = 'Class Updated';
                 $message = 'A class you are enrolled in has been updated';
@@ -266,13 +272,20 @@ class ClassController extends Controller
                 <p><strong>Class Link:</strong> <a href="' . $class->classLink . '">' . $class->classLink . '</a></p>
                 <p><strong>Class Timings:</strong> ' . $timing->preferred_time_from . ' - ' . $timing->preferred_time_to . '</p>
             ';
+
                 $body = '<p>Dear Student,</p>
-                     <p>The class you are enrolled in has been updated. Please find the updated details below:</p>'
+                <p>The class you are enrolled in has been updated. Please find the updated details below:</p>'
                     . $classDetails .
                     '<p>Thank you for staying connected.</p>
-                     <p>Best regards,<br>The HolyVibes Team</p>';
+                 <p>Best regards,<br>The HolyVibes Team</p>';
+
                 $adminBody = '<p>Dear Admin,</p>
-                          <p>The class has been updated by the instructor. Below are the updated details:</p>'
+                <p>The class has been updated by the instructor. Below are the updated details:</p>'
+                    . $classDetails .
+                    '<p>Regards,<br>HolyVibes System</p>';
+
+                $teacherBody = '<p>Dear Teacher,</p>
+                <p>Your class has been successfully updated. Here are the updated details:</p>'
                     . $classDetails .
                     '<p>Regards,<br>HolyVibes System</p>';
                 $studentTimings = StudentClassTimings::where('classID', $classID)->get();
@@ -283,6 +296,10 @@ class ClassController extends Controller
                 $admin = User::where('role', 'admin')->first();
                 if ($admin) {
                     Mail::to($admin->email)->send(new ClassMail($title, $message, $adminBody));
+                }
+                $teacher = Teacher::find($class->teacherID);
+                if ($teacher) {
+                    Mail::to($teacher->email)->send(new ClassMail($title, $message, $teacherBody));
                 }
                 return response()->json([
                     'message' => 'Class updated successfully and notifications sent!',
@@ -310,6 +327,7 @@ class ClassController extends Controller
             ], 500);
         }
     }
+
 
     public function assign_class(Request $request)
     {
@@ -438,20 +456,28 @@ class ClassController extends Controller
             $students = Student::whereIn('id', $studentIDs)->get();
             $updatedCount = StudentClassTimings::where('classID', $classID)
                 ->update(['classID' => null]);
-            $class->delete();
+            $title = 'Class Deleted';
+            $subtitle = 'A class you were enrolled in has been deleted';
+            $studentBody = '<p>Dear Student,</p>
+            <p>We regret to inform you that the class titled <strong>"' . $class->title . '"</strong> has been permanently deleted. We understand that this may cause inconvenience, and we sincerely apologize for any disruption this may cause.</p>
+            <p>If you believe this is a mistake or have any questions, please do not hesitate to reach out to your instructor for clarification.</p>
+            <p>Thank you for your understanding.</p>
+            <p>Best regards,<br>The HolyVibes Team</p>';
             foreach ($students as $std) {
-                $title = 'Class Deleted';
-                $subtitle = 'A class you were enrolled in has been deleted';
-                $body = '<p>Dear Student,</p>
-         <p>We regret to inform you that the class titled <strong>"' . $class->title . '"</strong> has been permanently deleted. We understand that this may cause inconvenience, and we sincerely apologize for any disruption this may cause.</p>
-         <p>If you believe this is a mistake or have any questions, please do not hesitate to reach out to your instructor for clarification.</p>
-         <p>Thank you for your understanding.</p>
-         <p>Best regards,<br>The HolyVibes Team</p>';
-
-                Mail::to($std->email)->send(new ClassMail($title, $subtitle, $body));
+                Mail::to($std->email)->send(new ClassMail($title, $subtitle, $studentBody));
             }
+            $teacher = Teacher::find($class->teacherID);
+            if ($teacher) {
+                $teacherBody = '<p>Dear Teacher,</p>
+                <p>This is to inform you that your class titled <strong>"' . $class->title . '"</strong> has been successfully deleted from the system.</p>
+                <p>If this was not intentional, please contact the administrator immediately.</p>
+                <p>Thank you for your contribution.</p>
+                <p>Best regards,<br>The HolyVibes Team</p>';
+                Mail::to($teacher->email)->send(new ClassMail($title, 'Your class has been deleted', $teacherBody));
+            }
+            $class->delete();
             return response()->json([
-                'message' => 'Class deleted successfully and students notified',
+                'message' => 'Class deleted successfully and notifications sent',
                 'unassigned_timings_count' => $updatedCount
             ], 200);
         } catch (\Exception $e) {
@@ -461,9 +487,6 @@ class ClassController extends Controller
             ], 500);
         }
     }
-
-
-
 
     public function get_class_students($classId)
     {

@@ -57,8 +57,8 @@ class AuthController extends Controller
         }
 
         $newAdmin = User::create([
-            'name' => "admin",
-            'email' => "admin@gmail.com",
+            'name' => "osman",
+            'email' => "mosman257@gmail.com",
             'password' => Hash::make("123456"),
             'role' => "admin"
         ]);
