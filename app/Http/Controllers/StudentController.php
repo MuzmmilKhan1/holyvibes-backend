@@ -11,6 +11,8 @@ use App\Models\ClassModel;
 use App\Models\ClassTimings;
 use App\Models\Course;
 use App\Models\Enrollment;
+use App\Models\Event;
+use App\Models\EventParticipant;
 use App\Models\StudentClassTimings;
 use App\Models\StudentPerformance;
 use App\Models\TeacherAllotment;
@@ -93,6 +95,17 @@ class StudentController extends Controller
                 }
             }
 
+            $events = Event::all();
+            if (!empty($events)) {
+                foreach ($events as $event) {
+                    EventParticipant::create([
+                        'eventID' => $event->id,
+                        'studentID' => $student->id,
+                        'is_member' => false,
+                        'payment_status' => $event->isPaid ? 'pending' : 'not_required',
+                    ]);
+                }
+            }
             $admin = User::where("role", "admin")->first();
             $title = 'New Student Registered';
             $subtitle = 'A new student has registered';
@@ -112,10 +125,6 @@ class StudentController extends Controller
             We are excited to have you on board!<br><br>
             <p>Thanks,<br>The HolyVibes Team</p>';
             Mail::to($request->email)->send(new ClassMail($studentTitle, $studentSubtitle, $studentBody));
-
-
-
-
             return response()->json([
                 'message' => 'Student registered successfully!',
                 'student' => $student,
@@ -463,20 +472,20 @@ class StudentController extends Controller
     }
 
 
- public function classes(Request $request)
-{
-    $studentID = $request->get('user')->student_id;
+    public function classes(Request $request)
+    {
+        $studentID = $request->get('user')->student_id;
 
-    $classes = StudentClassTimings::with('class')
-        ->where('studentID', $studentID)
-        ->whereNotNull('classID')
-        ->get();
+        $classes = StudentClassTimings::with('class')
+            ->where('studentID', $studentID)
+            ->whereNotNull('classID')
+            ->get();
 
-    return response()->json([
-        'message' => 'Classes found successfully.',
-        'classes' => $classes,
-    ]);
-}
+        return response()->json([
+            'message' => 'Classes found successfully.',
+            'classes' => $classes,
+        ]);
+    }
 
 
 

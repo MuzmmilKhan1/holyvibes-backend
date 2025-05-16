@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('event_participants', function (Blueprint $table) {
             $table->id();
             $table->foreignId('eventID')->constrained('events')->onDelete('cascade');
-            $table->foreignId('studentID')->constrained('students')->onDelete('cascade');
+            $table->foreignId('studentID')->constrained(table: 'students')->onDelete('cascade');
             $table->boolean('is_member')->default(false);
             $table->enum('payment_status', ['pending', 'paid', 'rejected', 'not_required'])->default('pending');
             $table->timestamps();
